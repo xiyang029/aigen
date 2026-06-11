@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_filex/open_filex.dart';
@@ -11,31 +13,20 @@ class AppUpdateChecker {
     required this.api,
     required this.context,
     this.onDownloadingChanged,
+    this.onDownloadLabelChanged,
   });
 
   static const _installerChannel = MethodChannel('com.xiyang.aigen/installer');
-  static const _downloadNotificationId = 1001;
 
-  // 服务端 API 客户端，用于查询版本和下载安装包。
   final ApiClient api;
-
-  // 当前页面上下文，用于展示更新弹窗和提示。
   final BuildContext context;
-
-  // 下载状态回调，用于同步页面按钮禁用状态。
   final ValueChanged<bool>? onDownloadingChanged;
+  final ValueChanged<String?>? onDownloadLabelChanged;
 
-  // 等待安装权限后需要继续打开的 APK 路径。
   String? _pendingInstallApkPath;
-
-  // 标记是否正在等待用户授予安装未知来源应用权限。
   bool _waitingInstallPermission = false;
-
-  // 防止重复触发下载安装流程。
   bool _downloading = false;
-
-  // 记录上次通知栏进度，避免高频刷新系统通知。
-  int _lastNotifiedProgress = -1;
+  ValueNotifier<_DownloadDialogState>? _downloadStateNotifier;
 
   Future<void> check({
     bool silentWhenLatest = false,
@@ -86,13 +77,13 @@ class AppUpdateChecker {
     required AppReleaseInfo release,
   }) async {
     if (!context.mounted) return false;
-    final shouldDownload =
-        await showShadDialog<bool>(
+    return await showShadDialog<bool>(
           context: context,
           builder: (context) => ShadDialog.alert(
             title: const Text('发现新版本'),
             description: Text(
-              '当前版本 $currentVersion，最新版本 ${release.version}。\n',
+              '当前版本 $currentVersion，最新版本 ${release.version}。\n'
+              '安装包大小 ${_formatBytes(release.expectedSize)}。',
             ),
             actions: [
               ShadButton.outline(
@@ -108,86 +99,129 @@ class AppUpdateChecker {
           ),
         ) ??
         false;
-    return shouldDownload;
   }
 
   Future<void> _downloadAndInstallRelease(AppReleaseInfo release) async {
-    if (_downloading) return;
-    _lastNotifiedProgress = -1;
+    if (_downloading || !context.mounted) return;
     _setDownloading(true);
 
-    try {
-      await _showDownloadNotification(
+    final stateNotifier = ValueNotifier(
+      const _DownloadDialogState(
         title: '正在下载更新',
-        content: '准备下载 ${release.version}',
+        message: '准备下载安装包...',
         progress: 0,
-      );
+      ),
+    );
+    _downloadStateNotifier = stateNotifier;
+    final dialogFuture = _showDownloadDialog(stateNotifier);
+
+    try {
       final file = await api.downloadReleaseApk(
         release,
         onProgress: (receivedBytes, totalBytes) {
-          if (totalBytes != null && totalBytes > 0) {
-            final progress = (receivedBytes / totalBytes * 100)
-                .clamp(0, 100)
-                .round();
-            if (progress != _lastNotifiedProgress) {
-              _lastNotifiedProgress = progress;
-              _showDownloadNotification(
-                title: '正在下载更新',
-                content: '$progress%',
-                progress: progress,
-              );
-            }
-          } else {
-            final sizeText =
-                '${(receivedBytes / 1024 / 1024).toStringAsFixed(1)} MB';
-            _showDownloadNotification(
-              title: '正在下载更新',
-              content: '已下载 $sizeText',
-            );
-          }
+          final progress = totalBytes != null && totalBytes > 0
+              ? (receivedBytes / totalBytes).clamp(0, 1).toDouble()
+              : null;
+          final percent = progress == null ? null : (progress * 100).round();
+          final totalLabel = totalBytes == null ? null : _formatBytes(totalBytes);
+          stateNotifier.value = _DownloadDialogState(
+            title: '正在下载更新',
+            message: percent == null
+                ? '已下载 ${_formatBytes(receivedBytes)}'
+                : '已下载 ${_formatBytes(receivedBytes)} / $totalLabel',
+            progress: progress,
+          );
+          _setDownloadLabel(percent == null ? '更新中...' : '更新中 $percent%');
         },
       );
-      await _showDownloadNotification(
+
+      stateNotifier.value = const _DownloadDialogState(
         title: '下载完成',
-        content: '正在打开安装包',
-        progress: 100,
-        completed: true,
+        message: '校验完成，正在打开安装包...',
+        progress: 1,
       );
+      _setDownloadLabel('准备安装...');
+      await _closeDownloadDialog();
       await _openDownloadedApk(file.path);
     } catch (error) {
-      await _showDownloadNotification(
+      stateNotifier.value = _DownloadDialogState(
         title: '下载失败',
-        content: error.toString(),
-        failed: true,
+        message: error.toString(),
+        progress: null,
+        canClose: true,
       );
       if (context.mounted) {
         ShadToaster.of(
           context,
         ).show(ShadToast(title: Text('下载更新失败：${error.toString()}')));
       }
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      await _closeDownloadDialog();
     } finally {
+      await dialogFuture;
+      if (identical(_downloadStateNotifier, stateNotifier)) {
+        _downloadStateNotifier = null;
+      }
+      stateNotifier.dispose();
       _setDownloading(false);
     }
   }
 
-  Future<void> _showDownloadNotification({
-    required String title,
-    required String content,
-    int? progress,
-    bool completed = false,
-    bool failed = false,
-  }) async {
-    try {
-      await _installerChannel.invokeMethod<void>('showDownloadNotification', {
-        'id': _downloadNotificationId,
-        'title': title,
-        'content': content,
-        'progress': progress,
-        'completed': completed,
-        'failed': failed,
-      });
-    } catch (_) {
-      // 系统通知不可用时不中断下载和安装流程。
+  Future<void> _showDownloadDialog(
+    ValueNotifier<_DownloadDialogState> stateNotifier,
+  ) async {
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return PopScope(
+          canPop: false,
+          child: ValueListenableBuilder<_DownloadDialogState>(
+            valueListenable: stateNotifier,
+            builder: (context, state, _) {
+              final percent = state.progress == null
+                  ? null
+                  : (state.progress! * 100).round().clamp(0, 100);
+              return ShadDialog(
+                title: Text(state.title),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(state.message),
+                    const SizedBox(height: 14),
+                    LinearProgressIndicator(value: state.progress),
+                    const SizedBox(height: 10),
+                    Text(
+                      percent == null ? '下载中...' : '$percent%',
+                      style: ShadTheme.of(context).textTheme.muted,
+                    ),
+                    if (state.canClose) ...[
+                      const SizedBox(height: 18),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: ShadButton.outline(
+                          child: const Text('关闭'),
+                          onPressed: () => Navigator.of(dialogContext).pop(),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _closeDownloadDialog() async {
+    if (_downloadStateNotifier == null || !context.mounted) return;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    if (navigator.canPop()) {
+      navigator.pop();
     }
   }
 
@@ -224,6 +258,26 @@ class AppUpdateChecker {
   void _setDownloading(bool value) {
     _downloading = value;
     onDownloadingChanged?.call(value);
+    if (!value) {
+      _setDownloadLabel(null);
+    }
+  }
+
+  void _setDownloadLabel(String? label) {
+    onDownloadLabelChanged?.call(label);
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    var size = bytes.toDouble();
+    var unitIndex = 0;
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024;
+      unitIndex++;
+    }
+    final fractionDigits = unitIndex == 0 ? 0 : 1;
+    return '${size.toStringAsFixed(fractionDigits)} ${units[unitIndex]}';
   }
 
   bool _isVersionNewer(String latest, String current) {
@@ -247,4 +301,18 @@ class AppUpdateChecker {
         .map((part) => int.tryParse(part) ?? 0)
         .toList();
   }
+}
+
+class _DownloadDialogState {
+  const _DownloadDialogState({
+    required this.title,
+    required this.message,
+    required this.progress,
+    this.canClose = false,
+  });
+
+  final String title;
+  final String message;
+  final double? progress;
+  final bool canClose;
 }

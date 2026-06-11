@@ -3,6 +3,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:convert/convert.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -47,6 +49,8 @@ class AppReleaseInfo {
     required this.body,
     required this.downloadUrl,
     required this.fileName,
+    required this.expectedSize,
+    required this.sha256,
   });
 
   final String version;
@@ -54,6 +58,8 @@ class AppReleaseInfo {
   final String body;
   final String downloadUrl;
   final String fileName;
+  final int expectedSize;
+  final String sha256;
 }
 
 class _TimedCache<T> {
@@ -81,7 +87,7 @@ class ApiClient {
   static const _configsCacheTtl = Duration(minutes: 5);
   static const _releaseCacheTtl = Duration(minutes: 10);
   static const _releaseApiUrl =
-      'https://gitee.com/api/v5/repos/xiaoxi233xyz/aigen/releases/latest';
+      'https://api.github.com/repos/xiyang029/aigen/releases/latest';
   static const _releaseApkFileName = 'app-arm64-v8a-release.apk';
 
   String get baseUrl => _baseUrl;
@@ -430,7 +436,13 @@ class ApiClient {
     if (cached != null && cached.isFresh) return cached.value;
 
     try {
-      final response = await _http.get(Uri.parse(_releaseApiUrl));
+      final response = await _http.get(
+        Uri.parse(_releaseApiUrl),
+        headers: const {
+          HttpHeaders.acceptHeader: 'application/vnd.github+json',
+          HttpHeaders.userAgentHeader: 'aigen-app-updater',
+        },
+      );
       final json = await _readJson(response);
       final assets = json['assets'] as List<dynamic>? ?? const [];
       final apkAsset = assets.whereType<Map<String, dynamic>>().firstWhere(
@@ -441,12 +453,22 @@ class ApiClient {
       if (downloadUrl.isEmpty) {
         throw ApiException('未找到更新包：$_releaseApkFileName');
       }
+      final expectedSize = (apkAsset['size'] as num?)?.toInt() ?? 0;
+      if (expectedSize <= 0) {
+        throw ApiException('更新包大小信息无效');
+      }
+      final sha256 = _parseReleaseDigest(apkAsset['digest'] as String?);
+      if (sha256 == null) {
+        throw ApiException('未找到更新包 SHA-256 校验信息');
+      }
       final release = AppReleaseInfo(
         version: json['tag_name'] as String? ?? '',
         name: json['name'] as String? ?? '',
         body: json['body'] as String? ?? '',
         downloadUrl: downloadUrl,
         fileName: _releaseApkFileName,
+        expectedSize: expectedSize,
+        sha256: sha256,
       );
       if (release.version.isEmpty) throw ApiException('更新版本信息无效');
       _releaseCache = _TimedCache(
@@ -639,21 +661,23 @@ class ApiClient {
     AppReleaseInfo release, {
     void Function(int receivedBytes, int? totalBytes)? onProgress,
   }) async {
+    final file = await _releaseApkFile(release);
     try {
-      final file = await _releaseApkFile(release);
-      if (await file.exists()) {
-        final length = await file.length();
-        if (length > 0) {
-          onProgress?.call(length, length);
-          return file;
-        }
+      if (await _isValidReleaseFile(file, release)) {
+        onProgress?.call(release.expectedSize, release.expectedSize);
+        return file;
       }
+      await _deleteIfExists(file);
 
       final request = http.Request('GET', Uri.parse(release.downloadUrl));
+      request.headers[HttpHeaders.userAgentHeader] = 'aigen-app-updater';
       final streamed = await _http.send(request);
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         throw ApiException('下载更新包失败：HTTP ${streamed.statusCode}');
       }
+      final expectedTotal = release.expectedSize > 0
+          ? release.expectedSize
+          : streamed.contentLength;
 
       final sink = file.openWrite();
       var receivedBytes = 0;
@@ -661,13 +685,30 @@ class ApiClient {
         await for (final chunk in streamed.stream) {
           sink.add(chunk);
           receivedBytes += chunk.length;
-          onProgress?.call(receivedBytes, streamed.contentLength);
+          onProgress?.call(receivedBytes, expectedTotal);
         }
-      } finally {
         await sink.close();
+      } catch (_) {
+        await sink.close().catchError((_) {});
+        await _deleteIfExists(file);
+        rethrow;
       }
+
+      if (receivedBytes != release.expectedSize) {
+        await _deleteIfExists(file);
+        throw ApiException(
+          '下载文件大小异常：期望 ${release.expectedSize} 字节，实际 $receivedBytes 字节',
+        );
+      }
+
+      if (!await _isValidReleaseFile(file, release)) {
+        await _deleteIfExists(file);
+        throw ApiException('下载包校验失败，请重新下载');
+      }
+
       return file;
     } catch (error) {
+      await _deleteCorruptedReleaseFile(file, release);
       if (error is ApiException) rethrow;
       throw _networkException(error);
     }
@@ -863,6 +904,52 @@ class ApiClient {
     );
     final fileName = '$safeVersion-${release.fileName}';
     return File('${updateDir.path}${Platform.pathSeparator}$fileName');
+  }
+
+  String? _parseReleaseDigest(String? digestValue) {
+    final normalized = (digestValue ?? '').trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    if (RegExp(r'^[a-f0-9]{64}$').hasMatch(normalized)) return normalized;
+    final parts = normalized.split(':');
+    if (parts.length == 2 &&
+        parts.first == 'sha256' &&
+        RegExp(r'^[a-f0-9]{64}$').hasMatch(parts.last)) {
+      return parts.last;
+    }
+    return null;
+  }
+
+  Future<bool> _isValidReleaseFile(File file, AppReleaseInfo release) async {
+    if (!await file.exists()) return false;
+    final length = await file.length();
+    if (length != release.expectedSize) return false;
+    final digest = await _computeFileSha256(file);
+    return digest == release.sha256;
+  }
+
+  Future<String> _computeFileSha256(File file) async {
+    final output = AccumulatorSink<Digest>();
+    final input = sha256.startChunkedConversion(output);
+    await for (final chunk in file.openRead()) {
+      input.add(chunk);
+    }
+    input.close();
+    return output.events.single.toString();
+  }
+
+  Future<void> _deleteCorruptedReleaseFile(
+    File file,
+    AppReleaseInfo release,
+  ) async {
+    if (!await file.exists()) return;
+    if (await _isValidReleaseFile(file, release)) return;
+    await _deleteIfExists(file);
+  }
+
+  Future<void> _deleteIfExists(File file) async {
+    if (await file.exists()) {
+      await file.delete();
+    }
   }
 
   void _clearRuntimeCache() {
