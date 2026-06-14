@@ -11,8 +11,6 @@ const imageError = Color(0xFFE65C84);
 const imagePagePadding = EdgeInsets.fromLTRB(16, 8, 16, 30);
 
 // 任务状态徽章配色，统一供任务列表和详情状态标识使用。
-const imageQueuedBadgeBackground = Color(0xFFEEF6FF);
-const imageQueuedBadgeForeground = Color(0xFF2563EB);
 const imageRunningBadgeBackground = Color(0xFFF4F0FF);
 const imageRunningBadgeForeground = Color(0xFF7C3AED);
 

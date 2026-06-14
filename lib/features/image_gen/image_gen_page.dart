@@ -430,7 +430,7 @@ class ImageGenPageState extends State<ImageGenPage>
         if (_tasks.isEmpty)
           EmptyState(
             icon: LucideIcons.images,
-            text: _loadingTasks ? '正在加载任务...' : '当前没有排队或运行中的任务。',
+            text: _loadingTasks ? '正在加载任务...' : '当前没有运行中的任务。',
           )
         else
           ImageTaskCardList(

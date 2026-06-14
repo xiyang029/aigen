@@ -92,14 +92,14 @@ class ImageTaskSummary {
   final String? finishedAt;
   final String? errorMessage;
 
-  bool get isActive => status == 'queued' || status == 'running';
+  bool get isActive => status == 'running';
   bool get isCompleted => status == 'completed';
   bool get isFailed => status == 'failed';
 
   factory ImageTaskSummary.fromJson(Map<String, dynamic> json) {
     return ImageTaskSummary(
       id: json['id'] as String? ?? '',
-      status: json['status'] as String? ?? 'queued',
+      status: json['status'] as String? ?? 'running',
       mode: ImageMode.fromValue(json['mode'] as String? ?? 'generate'),
       prompt: json['prompt'] as String? ?? '',
       negativePrompt: json['negativePrompt'] as String? ?? '',
@@ -132,7 +132,7 @@ class ImageTaskDetail extends ImageTaskSummary {
   factory ImageTaskDetail.fromJson(Map<String, dynamic> json) {
     return ImageTaskDetail(
       id: json['id'] as String? ?? '',
-      status: json['status'] as String? ?? 'queued',
+      status: json['status'] as String? ?? 'running',
       mode: ImageMode.fromValue(json['mode'] as String? ?? 'generate'),
       prompt: json['prompt'] as String? ?? '',
       negativePrompt: json['negativePrompt'] as String? ?? '',

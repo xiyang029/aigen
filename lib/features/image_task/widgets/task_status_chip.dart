@@ -11,12 +11,6 @@ class TaskStatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meta = switch (status) {
-      'queued' => (
-        label: '排队中',
-        bg: imageQueuedBadgeBackground,
-        fg: imageQueuedBadgeForeground,
-        icon: LucideIcons.clock,
-      ),
       'running' => (
         label: '生成中',
         bg: imageRunningBadgeBackground,
