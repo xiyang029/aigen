@@ -37,8 +37,5 @@ ShadThemeData buildAppTheme() {
       useSafeArea: false,
       radius: BorderRadius.all(Radius.circular(16.0)),
     ),
-    primaryToastTheme: const ShadToastTheme(
-      showCloseIconOnlyWhenHovered: false,
-    ),
   );
 }

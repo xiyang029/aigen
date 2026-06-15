@@ -23,22 +23,12 @@ Future<void> saveNetworkImageToGallery({
     );
     final saved = result is Map && result['isSuccess'] == true;
     if (!context.mounted) return;
-    if (context.mounted) {
-      ShadToaster.of(
-        context,
-      ).show(ShadToast(title: Text(saved ? '已保存到系统相册' : '保存失败')));
-    }
+    showAppToast(context, saved ? '已保存到系统相册' : '保存失败');
   } on ApiException catch (error) {
     if (!context.mounted) return;
-    if (context.mounted) {
-      ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-    }
+    showAppToast(context, error.message);
   } catch (error) {
     if (!context.mounted) return;
-    if (context.mounted) {
-      ShadToaster.of(
-        context,
-      ).show(ShadToast(title: Text('保存失败：${error.toString()}')));
-    }
+    showAppToast(context, '保存失败：${error.toString()}');
   }
 }

@@ -18,8 +18,6 @@ export 'package:shadcn_ui/shadcn_ui.dart'
         ShadSliderController,
         ShadTab,
         ShadTheme,
-        ShadToast,
-        ShadToaster,
         ShadTextarea,
         ShadTabs,
         showShadDialog,
@@ -27,6 +25,7 @@ export 'package:shadcn_ui/shadcn_ui.dart'
         ShadSheetTheme,
         ShadSheetSide,
         showShadSheet;
+export 'system_toast.dart';
 
 class AppPageScaffold extends StatelessWidget {
   const AppPageScaffold({

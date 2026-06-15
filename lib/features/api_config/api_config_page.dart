@@ -81,14 +81,10 @@ class _ApiConfigPageState extends State<ApiConfigPage> {
       }
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -144,24 +140,14 @@ class _ApiConfigPageState extends State<ApiConfigPage> {
     try {
       await _saveConfig(kind, result, config);
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(
-          ShadToast(
-            title: Text('${kind.label}配置已${config == null ? '新增' : '保存'}'),
-          ),
-        );
-      }
+      showAppToast(context, '${kind.label}配置已${config == null ? '新增' : '保存'}');
       await _load();
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -228,22 +214,14 @@ class _ApiConfigPageState extends State<ApiConfigPage> {
         await widget.api.deletePromptConfig(config.id);
       }
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(
-          context,
-        ).show(ShadToast(title: Text('${kind.label}配置已删除')));
-      }
+      showAppToast(context, '${kind.label}配置已删除');
       await _load();
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
     }

@@ -67,9 +67,7 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
       _syncPolling(task);
     } on ApiException catch (error) {
       _syncPolling(null);
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } finally {
       if (mounted) {
         setState(() {
@@ -104,9 +102,7 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
     } on ApiException catch (error) {
       _syncPolling(null);
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     }
   }
 
@@ -119,9 +115,8 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
     setState(() => _refreshing = true);
     try {
       await _loadTask(silent: true);
-      if (mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('任务状态已刷新')));
-      }
+      if (!mounted) return;
+      showAppToast(context, '任务状态已刷新');
     } finally {
       if (mounted) setState(() => _refreshing = false);
     }
@@ -133,15 +128,11 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
     try {
       await widget.api.retryTask(widget.taskId);
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('已重新提交任务')));
-      }
+      showAppToast(context, '已重新提交任务');
       await _loadTask(silent: true);
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } finally {
       if (mounted) setState(() => _retrying = false);
     }
@@ -161,15 +152,11 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
     try {
       await widget.api.deleteTask(task.id);
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('任务已删除')));
-      }
+      showAppToast(context, '任务已删除');
       Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     }
   }
 
@@ -186,9 +173,7 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
     if (task == null || _reusing) return;
     final params = task.params;
     if (params == null) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('当前任务缺少可复用的参数')));
-      }
+      showAppToast(context, '当前任务缺少可复用的参数');
       return;
     }
 
@@ -198,11 +183,7 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
       if (asEdit) {
         final resultImages = task.result?.images ?? const <TaskResultImage>[];
         if (resultImages.isEmpty) {
-          if (context.mounted) {
-            ShadToaster.of(
-              context,
-            ).show(ShadToast(title: Text('当前任务还没有可复用的结果图')));
-          }
+          showAppToast(context, '当前任务还没有可复用的结果图');
           return;
         }
         final tempDir = await getTemporaryDirectory();
@@ -247,15 +228,9 @@ class _ImageTaskDetailPageState extends State<ImageTaskDetailPage>
         Navigator.of(context).pop(draft);
       }
     } on ApiException catch (error) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
-      if (context.mounted) {
-        ShadToaster.of(
-          context,
-        ).show(ShadToast(title: Text('复用失败：${error.toString()}')));
-      }
+      showAppToast(context, '复用失败：${error.toString()}');
     } finally {
       if (mounted) setState(() => _reusing = false);
     }

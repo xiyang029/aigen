@@ -45,7 +45,8 @@ class _ImageTaskListPageState extends State<ImageTaskListPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && _tasks.any((task) => task.isActive)) {
+    if (state == AppLifecycleState.resumed &&
+        _tasks.any((task) => task.isActive)) {
       if (mounted) setState(() => _resumingTasks = true);
       _loadTasks(reset: true, silent: true);
     }
@@ -91,9 +92,7 @@ class _ImageTaskListPageState extends State<ImageTaskListPage>
       });
       _syncPolling();
     } on ApiException catch (error) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } finally {
       if (mounted) {
         setState(() {
@@ -148,9 +147,7 @@ class _ImageTaskListPageState extends State<ImageTaskListPage>
       }
       _syncPolling();
     } on ApiException catch (error) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     }
   }
 

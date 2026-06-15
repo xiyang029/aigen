@@ -133,17 +133,10 @@ class ImageGenPageState extends State<ImageGenPage>
     }
     if (!mounted) return;
     if (invalidCount > 0) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(
-          ShadToast(
-            title: Text(
-              invalidCount == 1
-                  ? '检测到 1 张损坏图片，已跳过'
-                  : '检测到 $invalidCount 张损坏图片，已跳过',
-            ),
-          ),
-        );
-      }
+      showAppToast(
+        context,
+        invalidCount == 1 ? '检测到 1 张损坏图片，已跳过' : '检测到 $invalidCount 张损坏图片，已跳过',
+      );
     }
     if (picked.isEmpty) return;
     if (!mounted) return;
@@ -176,17 +169,11 @@ class ImageGenPageState extends State<ImageGenPage>
     final prompt = _promptController.text.trim();
     final negativePrompt = _negativePromptController.text.trim();
     if (prompt.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('请输入正向提示词')));
-      }
+      showAppToast(context, '请输入正向提示词');
       return;
     }
     if (_mode == ImageMode.edit && _images.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(
-          context,
-        ).show(ShadToast(title: Text('图生图模式至少需要 1 张参考图')));
-      }
+      showAppToast(context, '图生图模式至少需要 1 张参考图');
       return;
     }
     if (_mode == ImageMode.edit) {
@@ -202,17 +189,12 @@ class ImageGenPageState extends State<ImageGenPage>
               .where((image) => !invalidPaths.contains(image.path))
               .toList();
         });
-        if (context.mounted) {
-          ShadToaster.of(context).show(
-            ShadToast(
-              title: Text(
-                invalidImages.length == 1
-                    ? '检测到 1 张损坏图片，已从列表移除，请重新提交'
-                    : '检测到 ${invalidImages.length} 张损坏图片，已从列表移除，请重新提交',
-              ),
-            ),
-          );
-        }
+        showAppToast(
+          context,
+          invalidImages.length == 1
+              ? '检测到 1 张损坏图片，已从列表移除，请重新提交'
+              : '检测到 ${invalidImages.length} 张损坏图片，已从列表移除，请重新提交',
+        );
         return;
       }
     }
@@ -233,9 +215,7 @@ class ImageGenPageState extends State<ImageGenPage>
         images: _mode == ImageMode.edit ? _images : const [],
       );
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('任务已提交')));
-      }
+      showAppToast(context, '任务已提交');
       setState(() {
         _tasks = task.isActive
             ? [task, ..._tasks.where((item) => item.id != task.id)]
@@ -246,14 +226,10 @@ class ImageGenPageState extends State<ImageGenPage>
     } on ApiException catch (error) {
       if (error.statusCode == 401) await _handleUnauthorized();
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -296,9 +272,7 @@ class ImageGenPageState extends State<ImageGenPage>
         await _handleUnauthorized();
       } else {
         if (!mounted) return;
-        if (context.mounted) {
-          ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-        }
+        showAppToast(context, error.message);
       }
     }
   }
@@ -355,13 +329,10 @@ class ImageGenPageState extends State<ImageGenPage>
           .map((image) => ReuseImageFile(name: image.name, path: image.path))
           .toList();
     });
-    if (context.mounted) {
-      ShadToaster.of(context).show(
-        ShadToast(
-          title: Text(draft.mode == ImageMode.edit ? '已套用结果图和参数' : '已套用提示词和参数'),
-        ),
-      );
-    }
+    showAppToast(
+      context,
+      draft.mode == ImageMode.edit ? '已套用结果图和参数' : '已套用提示词和参数',
+    );
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,

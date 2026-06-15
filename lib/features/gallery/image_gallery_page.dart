@@ -85,9 +85,7 @@ class _ImageGalleryPageState extends State<ImageGalleryPage> {
         _hasMore = page.cursor != null && page.list.isNotEmpty;
       });
     } on ApiException catch (error) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } finally {
       if (mounted) {
         setState(() {

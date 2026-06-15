@@ -68,20 +68,14 @@ class _AuthPageState extends State<AuthPage> {
         final message = await widget.api.forgotPassword(email);
         if (!mounted) return;
         setState(() => _resetStep = true);
-        if (context.mounted) {
-          ShadToaster.of(context).show(ShadToast(title: Text(message)));
-        }
+        showAppToast(context, message);
       }
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _loading = false);
     }

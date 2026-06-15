@@ -102,14 +102,10 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
       });
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _loadingConfigs = false);
     }
@@ -142,16 +138,10 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
         _imageUrlController.clear();
         _reverseResult = null;
       });
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('图片已载入')));
-      }
+      showAppToast(context, '图片已载入');
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(
-          context,
-        ).show(ShadToast(title: Text('读取图片失败：${error.toString()}')));
-      }
+      showAppToast(context, '读取图片失败：${error.toString()}');
     }
   }
 
@@ -167,16 +157,12 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
   Future<void> _submitReverse() async {
     final model = _model.trim();
     if (model.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('请先在当前配置中选择模型')));
-      }
+      showAppToast(context, '请先在当前配置中选择模型');
       return;
     }
     final imageUrlText = _imageUrlController.text.trim();
     if ((_pickedImageDataUrl ?? '').isEmpty && imageUrlText.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('请选择图片或填写图片 URL')));
-      }
+      showAppToast(context, '请选择图片或填写图片 URL');
       return;
     }
 
@@ -195,19 +181,13 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
       );
       if (!mounted) return;
       setState(() => _reverseResult = result);
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('提示词反推完成')));
-      }
+      showAppToast(context, '提示词反推完成');
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _reverseLoading = false);
     }
@@ -221,9 +201,7 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
     try {
       resolvedUrl = widget.api.resolveUrl(imageUrlText);
     } catch (_) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('图片 URL 无效')));
-      }
+      showAppToast(context, '图片 URL 无效');
       return '';
     }
 
@@ -248,21 +226,15 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
     final originalPrompt = _originalPromptController.text.trim();
     final editRequirement = _editRequirementController.text.trim();
     if (model.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('请先在当前配置中选择模型')));
-      }
+      showAppToast(context, '请先在当前配置中选择模型');
       return;
     }
     if (originalPrompt.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('请填写原始提示词')));
-      }
+      showAppToast(context, '请填写原始提示词');
       return;
     }
     if (editRequirement.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('请填写修改需求')));
-      }
+      showAppToast(context, '请填写修改需求');
       return;
     }
 
@@ -279,19 +251,13 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
       );
       if (!mounted) return;
       setState(() => _modifyResult = result);
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('提示词已改写')));
-      }
+      showAppToast(context, '提示词已改写');
     } on ApiException catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
-      }
+      showAppToast(context, error.message);
     } catch (error) {
       if (!mounted) return;
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text(error.toString())));
-      }
+      showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _modifyLoading = false);
     }
@@ -300,16 +266,12 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
   Future<void> _copyText(String value) async {
     final text = value.trim();
     if (text.isEmpty) {
-      if (context.mounted) {
-        ShadToaster.of(context).show(ShadToast(title: Text('没有可复制的内容')));
-      }
+      showAppToast(context, '没有可复制的内容');
       return;
     }
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
-    if (context.mounted) {
-      ShadToaster.of(context).show(ShadToast(title: Text('已复制到剪贴板')));
-    }
+    showAppToast(context, '已复制到剪贴板');
   }
 
   @override

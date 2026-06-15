@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:async';
+import 'dart:isolate';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui';
 
 import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:path_provider/path_provider.dart';
@@ -19,6 +22,84 @@ const defaultWorkerBaseUrl = String.fromEnvironment(
   'WORKER_BASE_URL',
   defaultValue: 'https://xy.xiyangs.xyz',
 );
+
+const _downloadTaskEventPortName = 'aigen_downloader_send_port';
+
+class AppDownloadTaskEvents {
+  AppDownloadTaskEvents._();
+
+  /// 后台下载事件桥，负责把下载 isolate 的状态送回主 isolate。
+  static final AppDownloadTaskEvents instance = AppDownloadTaskEvents._();
+
+  /// 等待中的下载任务完成回调。
+  final Map<String, Completer<DownloadTaskStatus>> _taskWaiters = {};
+
+  /// 接收 flutter_downloader 后台 isolate 事件的端口。
+  final ReceivePort _port = ReceivePort();
+
+  /// 标记下载回调是否已注册，避免重复注册端口。
+  bool _registered = false;
+
+  /// 注册后台下载回调和 isolate 通信端口。
+  Future<void> register() async {
+    if (_registered) return;
+    _registered = true;
+    IsolateNameServer.removePortNameMapping(_downloadTaskEventPortName);
+    IsolateNameServer.registerPortWithName(
+      _port.sendPort,
+      _downloadTaskEventPortName,
+    );
+    _port.listen(_handleDownloadEvent);
+    await FlutterDownloader.registerCallback(downloadCallback, step: 1);
+  }
+
+  /// 等待指定下载任务进入完成、失败、取消或暂停状态。
+  Future<DownloadTaskStatus> waitForTask(String taskId) async {
+    await register();
+    final completer = Completer<DownloadTaskStatus>();
+    _taskWaiters[taskId] = completer;
+    final loadedStatus = await _loadedTaskStatus(taskId);
+    if (_isFinished(loadedStatus) && !completer.isCompleted) {
+      completer.complete(loadedStatus);
+    }
+    return completer.future.whenComplete(() => _taskWaiters.remove(taskId));
+  }
+
+  /// 处理后台 isolate 发回的下载状态事件。
+  void _handleDownloadEvent(dynamic data) {
+    if (data is! List<dynamic> || data.length < 2) return;
+    final taskId = data[0] as String?;
+    final statusValue = data[1] as int?;
+    if (taskId == null || statusValue == null) return;
+    final status = DownloadTaskStatus.fromInt(statusValue);
+    if (!_isFinished(status)) return;
+    final waiter = _taskWaiters[taskId];
+    if (waiter != null && !waiter.isCompleted) {
+      waiter.complete(status);
+    }
+  }
+
+  /// 从 flutter_downloader 数据库读取当前任务状态。
+  Future<DownloadTaskStatus?> _loadedTaskStatus(String taskId) async {
+    final tasks = await FlutterDownloader.loadTasks() ?? const <DownloadTask>[];
+    return tasks.where((task) => task.taskId == taskId).firstOrNull?.status;
+  }
+
+  /// 判断任务状态是否已经结束。
+  bool _isFinished(DownloadTaskStatus? status) {
+    return status == DownloadTaskStatus.complete ||
+        status == DownloadTaskStatus.failed ||
+        status == DownloadTaskStatus.canceled ||
+        status == DownloadTaskStatus.paused;
+  }
+}
+
+/// flutter_downloader 后台 isolate 入口，转发下载状态到主 isolate。
+@pragma('vm:entry-point')
+void downloadCallback(String id, int status, int _) {
+  final send = IsolateNameServer.lookupPortByName(_downloadTaskEventPortName);
+  send?.send([id, status]);
+}
 
 class ApiException implements Exception {
   ApiException(this.message, [this.statusCode]);
@@ -82,13 +163,17 @@ class ApiClient {
   String? _token;
   _TimedCache<List<ImageApiConfig>>? _configsCache;
   _TimedCache<List<PromptApiConfig>>? _promptConfigsCache;
-  _TimedCache<AppReleaseInfo>? _releaseCache;
+
+  /// 按 ABI 缓存 GitHub Release 中匹配的 APK 资产信息。
+  final Map<String, _TimedCache<AppReleaseInfo>> _releaseCacheByAbi = {};
 
   static const _configsCacheTtl = Duration(minutes: 5);
   static const _releaseCacheTtl = Duration(minutes: 10);
   static const _releaseApiUrl =
       'https://api.github.com/repos/xiyang029/aigen/releases/latest';
-  static const _releaseApkFileName = 'app-arm64-v8a-release.apk';
+
+  /// Release 中可自动更新的 Android ABI。
+  static const supportedReleaseAbis = ['arm64-v8a', 'armeabi-v7a', 'x86_64'];
 
   String get baseUrl => _baseUrl;
   bool get hasToken => (_token ?? '').isNotEmpty;
@@ -431,8 +516,10 @@ class ApiClient {
     }
   }
 
-  Future<AppReleaseInfo> fetchLatestRelease() async {
-    final cached = _releaseCache;
+  /// 获取当前 ABI 对应的最新 GitHub Release APK 资产。
+  Future<AppReleaseInfo> fetchLatestRelease({required String abi}) async {
+    final normalizedAbi = _normalizeReleaseAbi(abi);
+    final cached = _releaseCacheByAbi[normalizedAbi];
     if (cached != null && cached.isFresh) return cached.value;
 
     try {
@@ -445,13 +532,14 @@ class ApiClient {
       );
       final json = await _readJson(response);
       final assets = json['assets'] as List<dynamic>? ?? const [];
+      final releaseApkFileName = 'app-$normalizedAbi-release.apk';
       final apkAsset = assets.whereType<Map<String, dynamic>>().firstWhere(
-        (asset) => asset['name'] == _releaseApkFileName,
+        (asset) => asset['name'] == releaseApkFileName,
         orElse: () => const {},
       );
       final downloadUrl = apkAsset['browser_download_url'] as String? ?? '';
       if (downloadUrl.isEmpty) {
-        throw ApiException('未找到更新包：$_releaseApkFileName');
+        throw ApiException('未找到 $normalizedAbi 更新包：$releaseApkFileName');
       }
       final expectedSize = (apkAsset['size'] as num?)?.toInt() ?? 0;
       if (expectedSize <= 0) {
@@ -466,12 +554,12 @@ class ApiClient {
         name: json['name'] as String? ?? '',
         body: json['body'] as String? ?? '',
         downloadUrl: downloadUrl,
-        fileName: _releaseApkFileName,
+        fileName: releaseApkFileName,
         expectedSize: expectedSize,
         sha256: sha256,
       );
       if (release.version.isEmpty) throw ApiException('更新版本信息无效');
-      _releaseCache = _TimedCache(
+      _releaseCacheByAbi[normalizedAbi] = _TimedCache(
         value: release,
         expiresAt: DateTime.now().add(_releaseCacheTtl),
       );
@@ -657,48 +745,37 @@ class ApiClient {
     }
   }
 
-  Future<File> downloadReleaseApk(
-    AppReleaseInfo release, {
-    void Function(int receivedBytes, int? totalBytes)? onProgress,
-  }) async {
+  /// 使用 flutter_downloader 后台下载 APK，并在完成后校验文件。
+  Future<File> downloadReleaseApkWithDownloader(AppReleaseInfo release) async {
     final file = await _releaseApkFile(release);
     try {
       if (await _isValidReleaseFile(file, release)) {
-        onProgress?.call(release.expectedSize, release.expectedSize);
         return file;
       }
       await _deleteIfExists(file);
+      await AppDownloadTaskEvents.instance.register();
 
-      final request = http.Request('GET', Uri.parse(release.downloadUrl));
-      request.headers[HttpHeaders.userAgentHeader] = 'aigen-app-updater';
-      final streamed = await _http.send(request);
-      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
-        throw ApiException('下载更新包失败：HTTP ${streamed.statusCode}');
-      }
-      final expectedTotal = release.expectedSize > 0
-          ? release.expectedSize
-          : streamed.contentLength;
-
-      final sink = file.openWrite();
-      var receivedBytes = 0;
-      try {
-        await for (final chunk in streamed.stream) {
-          sink.add(chunk);
-          receivedBytes += chunk.length;
-          onProgress?.call(receivedBytes, expectedTotal);
-        }
-        await sink.close();
-      } catch (_) {
-        await sink.close().catchError((_) {});
-        await _deleteIfExists(file);
-        rethrow;
+      final taskId = await FlutterDownloader.enqueue(
+        url: release.downloadUrl,
+        savedDir: file.parent.path,
+        fileName: file.uri.pathSegments.last,
+        headers: const {HttpHeaders.userAgentHeader: 'aigen-app-updater'},
+        showNotification: true,
+        openFileFromNotification: false,
+      );
+      if (taskId == null) {
+        throw ApiException('创建后台下载任务失败');
       }
 
-      if (receivedBytes != release.expectedSize) {
+      final status = await AppDownloadTaskEvents.instance.waitForTask(taskId);
+      if (status != DownloadTaskStatus.complete) {
         await _deleteIfExists(file);
-        throw ApiException(
-          '下载文件大小异常：期望 ${release.expectedSize} 字节，实际 $receivedBytes 字节',
-        );
+        throw ApiException(switch (status) {
+          DownloadTaskStatus.failed => '后台下载更新包失败',
+          DownloadTaskStatus.canceled => '后台下载更新包已取消',
+          DownloadTaskStatus.paused => '后台下载更新包已暂停',
+          _ => '后台下载更新包未完成',
+        });
       }
 
       if (!await _isValidReleaseFile(file, release)) {
@@ -955,7 +1032,14 @@ class ApiClient {
   void _clearRuntimeCache() {
     _configsCache = null;
     _promptConfigsCache = null;
-    _releaseCache = null;
+    _releaseCacheByAbi.clear();
+  }
+
+  /// 规范化并校验 Release 支持的 ABI 名称。
+  String _normalizeReleaseAbi(String abi) {
+    final normalized = abi.trim().toLowerCase();
+    if (supportedReleaseAbis.contains(normalized)) return normalized;
+    throw ApiException('当前 ABI 不支持自动更新：$abi');
   }
 
   String _imageExtensionFromUrl(String url) {

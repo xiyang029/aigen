@@ -471,7 +471,7 @@ class _PromptCard extends StatelessWidget {
   Future<void> _copy(BuildContext context) async {
     await Clipboard.setData(ClipboardData(text: prompt));
     if (!context.mounted) return;
-    ShadToaster.of(context).show(ShadToast(title: Text('$title已复制')));
+    showAppToast(context, '$title已复制');
   }
 
   @override

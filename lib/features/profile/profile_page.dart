@@ -26,7 +26,6 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   AppUser? _user;
   AppUpdateChecker? _updateChecker;
   bool _loadingUser = true;
-  bool _downloadingUpdate = false;
   bool _clearingImageCache = false;
 
   @override
@@ -39,13 +38,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _updateChecker ??= AppUpdateChecker(
-      api: widget.api,
-      context: context,
-      onDownloadingChanged: (value) {
-        if (mounted) setState(() => _downloadingUpdate = value);
-      },
-    );
+    _updateChecker ??= AppUpdateChecker(api: widget.api, context: context);
   }
 
   @override
@@ -72,7 +65,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
         await _handleUnauthorized();
       } else {
         if (!mounted) return;
-        ShadToaster.of(context).show(ShadToast(title: Text(error.message)));
+        showAppToast(context, error.message);
       }
     } finally {
       if (mounted) setState(() => _loadingUser = false);
@@ -118,7 +111,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     );
     if (!mounted) return;
     if (changed == true) {
-      ShadToaster.of(context).show(ShadToast(title: Text('密码已修改')));
+      showAppToast(context, '密码已修改');
     }
   }
 
@@ -140,12 +133,10 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       PaintingBinding.instance.imageCache.clear();
       PaintingBinding.instance.imageCache.clearLiveImages();
       if (!mounted) return;
-      ShadToaster.of(context).show(ShadToast(title: Text('旧图片缓存已删除')));
+      showAppToast(context, '旧图片缓存已删除');
     } catch (error) {
       if (!mounted) return;
-      ShadToaster.of(
-        context,
-      ).show(ShadToast(title: Text('删除缓存失败：${error.toString()}')));
+      showAppToast(context, '删除缓存失败：${error.toString()}');
     } finally {
       if (mounted) setState(() => _clearingImageCache = false);
     }
@@ -175,11 +166,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       (label: '提示词工具', icon: LucideIcons.brain, onPressed: _openPromptTools),
       (label: 'API 配置管理', icon: LucideIcons.key, onPressed: _openApiConfigs),
       (label: '修改密码', icon: LucideIcons.keyRound, onPressed: _changePassword),
-      (
-        label: _downloadingUpdate ? '更新中...' : '检查更新',
-        icon: LucideIcons.refreshCw,
-        onPressed: _downloadingUpdate ? null : _checkForUpdates,
-      ),
+      (label: '检查更新', icon: LucideIcons.refreshCw, onPressed: _checkForUpdates),
       (
         label: _clearingImageCache ? '清理中...' : '删除图片缓存',
         icon: LucideIcons.trash2,
