@@ -121,23 +121,6 @@ class _AuthPageState extends State<AuthPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Align(
-                    child: SizedBox.square(
-                      dimension: 74,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: theme.radius,
-                        ),
-                        child: Icon(
-                          LucideIcons.sparkles,
-                          color: theme.colorScheme.primaryForeground,
-                          size: 36,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   Text(
                     _title,
                     textAlign: TextAlign.center,

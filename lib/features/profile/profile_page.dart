@@ -229,7 +229,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (var index = 0; index < actions.length; index++) ...[
-                if (index > 0) const Divider(height: 1, indent: 56),
+                if (index > 0) const Divider(height: 1, indent: 0),
                 _ProfileActionRow(
                   label: actions[index].label,
                   icon: actions[index].icon,

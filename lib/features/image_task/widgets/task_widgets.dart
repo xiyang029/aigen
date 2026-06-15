@@ -188,7 +188,7 @@ class ImageTaskGroupedCardList extends StatelessWidget {
               children: [
                 Text(entry.key, style: ShadTheme.of(context).textTheme.h4),
                 const SizedBox(width: 8),
-                ShadBadge.outline(child: Text('${entry.value.length} 条')),
+                ShadBadge.secondary(child: Text('${entry.value.length} 条')),
               ],
             ),
           ),

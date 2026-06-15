@@ -21,7 +21,6 @@ class ImagePreviewCard extends StatefulWidget {
     this.heroTag,
     this.topLabelBuilder,
     this.overlay,
-    this.backgroundColor = imageSubtleFill,
     this.onDownloadAt,
     this.retryVersion = 0,
   }) : assert(
@@ -39,7 +38,6 @@ class ImagePreviewCard extends StatefulWidget {
   final Object? heroTag;
   final String? Function(int index)? topLabelBuilder;
   final Widget? overlay;
-  final Color backgroundColor;
   final int retryVersion;
 
   @override
@@ -150,15 +148,12 @@ class _ImageTilePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(color: imageSubtleFill),
-      child: Center(
+    return Center(
         child: Icon(
           LucideIcons.image,
           size: 24,
           color: imageMutedText.withValues(alpha: 0.5),
         ),
-      ),
     );
   }
 }

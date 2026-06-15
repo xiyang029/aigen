@@ -637,32 +637,37 @@ class _ImagePickerPreview extends StatelessWidget {
           child: Text(hasPickedImage ? '重新选择图片' : '选择图片'),
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 230,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: hasPreview
-                    ? _PreviewImage(
-                        api: api,
-                        filePath: pickedImagePath,
-                        url: previewUrl,
-                      )
-                    : const _ImagePlaceholder(),
-              ),
-              if (hasPickedImage)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Tooltip(
-                    message: '清除图片',
-                    child: ShadIconButton.secondary(
-                      onPressed: onClearImage,
-                      icon: const Icon(LucideIcons.x),
+        ShadCard(
+          padding: EdgeInsets.zero,
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            height: 230,
+            width: double.infinity,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: hasPreview
+                      ? _PreviewImage(
+                          api: api,
+                          filePath: pickedImagePath,
+                          url: previewUrl,
+                        )
+                      : const _ImagePlaceholder(),
+                ),
+                if (hasPickedImage)
+                  Positioned(
+                    right: 8,
+                    top: 8,
+                    child: Tooltip(
+                      message: '清除图片',
+                      child: ShadIconButton.ghost(
+                        onPressed: onClearImage,
+                        icon: const Icon(LucideIcons.x),
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -681,13 +686,13 @@ class _PreviewImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final path = filePath;
     if (path != null) {
-      return Image.file(File(path), fit: BoxFit.contain);
+      return Image.file(File(path), fit: BoxFit.cover);
     }
     final imageUrl = url;
     if (imageUrl == null) return const _ImagePlaceholder();
     return Image.network(
       imageUrl,
-      fit: BoxFit.contain,
+      fit: BoxFit.cover,
       headers: api.authHeaders,
       errorBuilder: (_, _, _) => const _ImagePlaceholder(text: '图片预览失败'),
       loadingBuilder: (context, child, loadingProgress) {
@@ -705,21 +710,19 @@ class _ImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShadCard(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(LucideIcons.scanSearch, size: 42),
-            const SizedBox(height: 10),
-            Text(
-              text,
-              textAlign: TextAlign.center,
-              style: ShadTheme.of(context).textTheme.muted,
-            ),
-          ],
-        ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(LucideIcons.scanSearch, size: 42),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: ShadTheme.of(context).textTheme.muted,
+          ),
+        ],
       ),
     );
   }
