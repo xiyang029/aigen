@@ -216,83 +216,6 @@ class _ImagePreviewOverlayPageState extends State<_ImagePreviewOverlayPage> {
   }
 }
 
-class ImagePreviewFrame extends StatelessWidget {
-  const ImagePreviewFrame({
-    super.key,
-    this.imageUrl,
-    this.filePath,
-    this.cacheKey = '',
-    required this.headers,
-    this.borderRadius = const BorderRadius.all(Radius.circular(12)),
-    this.overlay,
-    this.errorChild,
-    this.placeholderChild,
-    this.onTap,
-    this.heroTag,
-    this.retryVersion = 0,
-  }) : assert(imageUrl != null || filePath != null);
-
-  final String? imageUrl;
-  final String? filePath;
-  final String cacheKey;
-  final Map<String, String> headers;
-  final BorderRadius borderRadius;
-  final Widget? overlay;
-  final Widget? errorChild;
-  final Widget? placeholderChild;
-  final VoidCallback? onTap;
-  final Object? heroTag;
-  final int retryVersion;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = ClipRRect(
-      borderRadius: borderRadius,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          if ((filePath ?? '').isNotEmpty)
-            Image.file(
-              File(filePath!),
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  errorChild ?? const Center(child: Icon(LucideIcons.imageOff)),
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final imageUrl = this.imageUrl!;
-                final cacheWidth = _cacheExtentFor(
-                  context,
-                  constraints.maxWidth,
-                );
-                return CachedNetworkImage(
-                  key: ValueKey('$cacheKey#$retryVersion'),
-                  imageUrl: imageUrl,
-                  cacheKey: cacheKey,
-                  httpHeaders: headers,
-                  fit: BoxFit.cover,
-                  memCacheWidth: cacheWidth,
-                  maxWidthDiskCache: cacheWidth,
-                  fadeInDuration: const Duration(milliseconds: 90),
-                  fadeOutDuration: Duration.zero,
-                  errorWidget: (context, url, error) =>
-                      errorChild ?? const Center(child: Icon(LucideIcons.imageOff)),
-                  placeholder: (context, url) =>
-                      placeholderChild ?? const Center(child: AppLoadingSpinner(size: 24)),
-                );
-              },
-            ),
-          if (overlay != null) ...[overlay!],
-        ],
-      ),
-    );
-
-    if (onTap == null) return content;
-    return InkWell(onTap: onTap, child: content);
-  }
-}
-
 class ImagePreviewCard extends StatelessWidget {
   const ImagePreviewCard({
     super.key,
@@ -302,6 +225,7 @@ class ImagePreviewCard extends StatelessWidget {
     required this.headers,
     required this.previewImages,
     required this.initialIndex,
+    this.fit = BoxFit.cover,
     this.heroTag,
     this.topLabelBuilder,
     this.overlay,
@@ -315,6 +239,7 @@ class ImagePreviewCard extends StatelessWidget {
   final Map<String, String> headers;
   final List<PreviewImageItem> previewImages;
   final int initialIndex;
+  final BoxFit fit;
   final Future<void> Function(int index)? onDownloadAt;
   final Object? heroTag;
   final String? Function(int index)? topLabelBuilder;
@@ -344,14 +269,98 @@ class ImagePreviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ImagePreviewFrame(
-      imageUrl: imageUrl,
-      filePath: filePath,
-      cacheKey: cacheKey,
-      headers: headers,
-      retryVersion: retryVersion,
-      overlay: overlay,
+    final content = ClipRRect(
+      borderRadius: const BorderRadius.all(Radius.circular(12)),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if ((filePath ?? '').isNotEmpty) {
+                final cacheWidth = previewCacheExtentFor(
+                  context,
+                  constraints.maxWidth,
+                  min: 160,
+                  max: 640,
+                );
+                final cacheHeight = previewCacheExtentFor(
+                  context,
+                  constraints.maxHeight,
+                  min: 160,
+                  max: 640,
+                );
+                return Image.file(
+                  File(filePath!),
+                  fit: fit,
+                  cacheWidth: cacheWidth,
+                  cacheHeight: cacheHeight,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Center(child: Icon(LucideIcons.imageOff)),
+                );
+              }
+
+              final imageUrl = this.imageUrl!;
+              final cacheWidth = previewCacheExtentFor(
+                context,
+                constraints.maxWidth,
+                min: 160,
+                max: 640,
+              );
+              return CachedNetworkImage(
+                key: ValueKey('$cacheKey#$retryVersion'),
+                imageUrl: imageUrl,
+                cacheKey: cacheKey,
+                httpHeaders: headers,
+                fit: fit,
+                memCacheWidth: cacheWidth,
+                maxWidthDiskCache: cacheWidth,
+                fadeInDuration: const Duration(milliseconds: 90),
+                fadeOutDuration: Duration.zero,
+                errorWidget: (context, url, error) =>
+                    const Center(child: Icon(LucideIcons.imageOff)),
+                placeholder: (context, url) =>
+                    const Center(child: AppLoadingSpinner(size: 24)),
+              );
+            },
+          ),
+          for (final currentOverlay in [overlay].nonNulls) currentOverlay,
+        ],
+      ),
+    );
+    return InkWell(
       onTap: () => _openPreview(context),
+      child: content,
+    );
+  }
+}
+
+/// 复用的图片空态内容，供占位卡和错误态直接展示。
+class ImagePreviewEmptyState extends StatelessWidget {
+  const ImagePreviewEmptyState({
+    super.key,
+    this.text = '选择图片或填写 URL 后预览',
+    this.leadingIcon = LucideIcons.scanSearch,
+  });
+
+  final String text;
+  final IconData leadingIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(leadingIcon, size: 42),
+          const SizedBox(height: AppGap.sm),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: ShadTheme.of(context).textTheme.muted,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -430,20 +439,9 @@ class ImagePreviewPlaceholderCard extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(leadingIcon, size: 42),
-                    const SizedBox(height: AppGap.sm),
-                    Text(
-                      text,
-                      textAlign: TextAlign.center,
-                      style: ShadTheme.of(context).textTheme.muted,
-                    ),
-                  ],
-                ),
+              child: ImagePreviewEmptyState(
+                text: text,
+                leadingIcon: leadingIcon,
               ),
             ),
             if (action != null) Positioned(right: 8, top: 8, child: action!),
@@ -454,8 +452,14 @@ class ImagePreviewPlaceholderCard extends StatelessWidget {
   }
 }
 
-int? _cacheExtentFor(BuildContext context, double logicalWidth) {
-  if (!logicalWidth.isFinite || logicalWidth <= 0) return null;
-  final deviceWidth = logicalWidth * MediaQuery.devicePixelRatioOf(context);
-  return deviceWidth.clamp(160, 640).round();
+/// 按当前缩略图尺寸折算缓存分辨率，避免本地大图解码过度。
+int? previewCacheExtentFor(
+  BuildContext context,
+  double logicalSize, {
+  required int min,
+  required int max,
+}) {
+  if (!logicalSize.isFinite || logicalSize <= 0) return null;
+  final deviceSize = logicalSize * MediaQuery.devicePixelRatioOf(context);
+  return deviceSize.clamp(min, max).round();
 }

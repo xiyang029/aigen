@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../../models/image_task.dart';
@@ -262,39 +263,33 @@ class _OptionGrid extends StatelessWidget {
               onChanged: onConfigChanged,
             ),
             const SizedBox(height: AppGap.sm),
-            ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(top: AppGap.sm),
-              title: Text('高级设置', style: ShadTheme.of(context).textTheme.muted),
-              children: [
-                LayoutBuilder(
-                  builder: (context, innerConstraints) {
-                    final columns = innerConstraints.maxWidth > 620 ? 2 : 1;
-                    return GridView.count(
-                      crossAxisCount: columns,
-                      mainAxisSpacing: AppGap.sm,
-                      crossAxisSpacing: AppGap.sm,
-                      mainAxisExtent: 78,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      children: [
-                        for (final field in advancedFields)
-                          _buildShadSelect<String>(
-                            context: context,
-                            label: field.label,
-                            value: field.value,
-                            options: field.options,
-                            onChanged: field.onChanged,
-                          ),
-                      ],
-                    );
-                  },
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, innerConstraints) {
+                final columns = innerConstraints.maxWidth > 620 ? 2 : 1;
+                // 固定列数控制高级项密度，避免在宽屏下拉长表单。
+                return GridView.count(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: AppGap.sm,
+                  crossAxisSpacing: AppGap.sm,
+                  mainAxisExtent: 78,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    for (final field in advancedFields)
+                      _buildShadSelect<String>(
+                        context: context,
+                        label: field.label,
+                        value: field.value,
+                        options: field.options,
+                        onChanged: field.onChanged,
+                      ),
+                  ],
+                );
+              },
             ),
-          ],
-        );
-      },
+        ],
+      );
+    },
     );
   }
 }
@@ -365,13 +360,6 @@ class _UploadPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final previewImages = images
-        .map(
-          (image) =>
-              PreviewImageItem(filePath: image.path, heroTag: image.path),
-        )
-        .toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -393,13 +381,9 @@ class _UploadPanel extends StatelessWidget {
                   child: Stack(
                     children: [
                       Positioned.fill(
-                        child: ImagePreviewCard(
+                        child: _UploadImagePreviewTile(
                           filePath: image.path,
-                          heroTag: image.path,
-                          headers: const {},
-                          previewImages: previewImages,
-                          initialIndex: index,
-                          overlay: const _ImageCardMaskOverlay(),
+                          onTap: () => onPreviewImage(index),
                         ),
                       ),
                       Positioned(
@@ -423,6 +407,56 @@ class _UploadPanel extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _UploadImagePreviewTile extends StatelessWidget {
+  const _UploadImagePreviewTile({
+    required this.filePath,
+    required this.onTap,
+  });
+
+  final String filePath;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ShadCard(
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: ShadTheme.of(context).colorScheme.background,
+              ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cacheWidth = previewCacheExtentFor(
+                      context,
+                      constraints.maxWidth,
+                      min: 92,
+                      max: 320,
+                    );
+                  return Image.file(
+                    File(filePath),
+                    fit: BoxFit.cover,
+                    cacheWidth: cacheWidth,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Icon(LucideIcons.imageOff),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const _ImageCardMaskOverlay(),
+          ],
+        ),
+      ),
     );
   }
 }

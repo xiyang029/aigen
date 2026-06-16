@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/image_task.dart';
 import '../../services/api_client.dart';
 import 'widgets/gallery_actions.dart';
-import 'widgets/image_preview_card.dart';
+import '../../shared/image_preview_widgets.dart';
 import 'widgets/search_filter_header.dart';
 import '../../shared/app_ui.dart';
 import '../../theme/app_theme.dart';

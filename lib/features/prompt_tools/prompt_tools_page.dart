@@ -28,7 +28,6 @@ class PromptToolsPage extends StatefulWidget {
 }
 
 class _PromptToolsPageState extends State<PromptToolsPage> {
-  final _imageUrlController = TextEditingController();
   final _reverseInstructionController = TextEditingController(
     text: _defaultReverseInstruction,
   );
@@ -44,14 +43,11 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
   bool _loadingConfigs = true;
   bool _reverseLoading = false;
   bool _modifyLoading = false;
-  bool _convertingUrl = false;
   String? _pickedImagePath;
-  String? _pickedImageName;
-  String? _pickedImageDataUrl;
   PromptReverseResult? _reverseResult;
   PromptModifyResult? _modifyResult;
 
-  bool get _busy => _reverseLoading || _modifyLoading || _convertingUrl;
+  bool get _busy => _reverseLoading || _modifyLoading;
 
   PromptApiConfig? get _selectedConfig {
     for (final config in _configs) {
@@ -70,7 +66,6 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
 
   @override
   void dispose() {
-    _imageUrlController.dispose();
     _reverseInstructionController.dispose();
     _originalPromptController.dispose();
     _editRequirementController.dispose();
@@ -124,33 +119,23 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
     });
   }
 
+  /// 仅保存本地图片路径，避免选图时同步转码阻塞界面。
   Future<void> _pickImage() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
     final file = result?.files.firstOrNull;
     final path = file?.path;
     if (file == null || path == null) return;
-    try {
-      final dataUrl = await _fileToDataUrl(path, file.name);
-      if (!mounted) return;
-      setState(() {
-        _pickedImagePath = path;
-        _pickedImageName = file.name;
-        _pickedImageDataUrl = dataUrl;
-        _imageUrlController.clear();
-        _reverseResult = null;
-      });
-      showAppToast(context, '图片已载入');
-    } catch (error) {
-      if (!mounted) return;
-      showAppToast(context, '读取图片失败：${error.toString()}');
-    }
+    if (!mounted) return;
+    setState(() {
+      _pickedImagePath = path;
+      _reverseResult = null;
+    });
+    showAppToast(context, '图片已载入');
   }
 
   void _clearImage() {
     setState(() {
       _pickedImagePath = null;
-      _pickedImageName = null;
-      _pickedImageDataUrl = null;
       _reverseResult = null;
     });
   }
@@ -161,19 +146,22 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
       showAppToast(context, '请先在当前配置中选择模型');
       return;
     }
-    final imageUrlText = _imageUrlController.text.trim();
-    if ((_pickedImageDataUrl ?? '').isEmpty && imageUrlText.isEmpty) {
-      showAppToast(context, '请选择图片或填写图片 URL');
+    final pickedImagePath = _pickedImagePath;
+    if ((pickedImagePath ?? '').isEmpty) {
+      showAppToast(context, '请选择图片');
       return;
     }
+    final imagePath = pickedImagePath!;
 
     setState(() {
       _reverseLoading = true;
       _reverseResult = null;
     });
     try {
-      final imageUrl = await _resolveReverseImageUrl(imageUrlText);
-      if (imageUrl.isEmpty) return;
+      final imageUrl = await _fileToDataUrl(
+        imagePath,
+        Uri.file(imagePath).pathSegments.last,
+      );
       final result = await widget.api.reversePromptFromImage(
         configId: _configId,
         model: model,
@@ -191,34 +179,6 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
       showAppToast(context, error.toString());
     } finally {
       if (mounted) setState(() => _reverseLoading = false);
-    }
-  }
-
-  Future<String> _resolveReverseImageUrl(String imageUrlText) async {
-    final localDataUrl = _pickedImageDataUrl ?? '';
-    if (localDataUrl.isNotEmpty) return localDataUrl;
-
-    Uri resolvedUrl;
-    try {
-      resolvedUrl = widget.api.resolveUrl(imageUrlText);
-    } catch (_) {
-      showAppToast(context, '图片 URL 无效');
-      return '';
-    }
-
-    setState(() => _convertingUrl = true);
-    try {
-      final dataUrl = await widget.api.remoteImageBase64(
-        resolvedUrl.toString(),
-      );
-      if (!mounted) return '';
-      setState(() {
-        _pickedImageDataUrl = dataUrl;
-        _pickedImageName = resolvedUrl.toString();
-      });
-      return dataUrl;
-    } finally {
-      if (mounted) setState(() => _convertingUrl = false);
     }
   }
 
@@ -321,18 +281,13 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
         const SizedBox(height: AppGap.md),
         if (_mode == _PromptToolMode.reverse)
           _ReversePanel(
-            imageUrlController: _imageUrlController,
             instructionController: _reverseInstructionController,
             pickedImagePath: _pickedImagePath,
-            pickedImageName: _pickedImageName,
-            api: widget.api,
             busy: _busy,
             reverseLoading: _reverseLoading,
-            convertingUrl: _convertingUrl,
             onPickImage: _pickImage,
             onClearImage: _clearImage,
             onSubmit: _submitReverse,
-            onImageUrlChanged: (_) => setState(() => _reverseResult = null),
           )
         else
           _ModifyPanel(
@@ -495,32 +450,22 @@ Widget _buildShadSelect<T>({
 
 class _ReversePanel extends StatelessWidget {
   const _ReversePanel({
-    required this.imageUrlController,
     required this.instructionController,
     required this.pickedImagePath,
-    required this.pickedImageName,
-    required this.api,
     required this.busy,
     required this.reverseLoading,
-    required this.convertingUrl,
     required this.onPickImage,
     required this.onClearImage,
     required this.onSubmit,
-    required this.onImageUrlChanged,
   });
 
-  final TextEditingController imageUrlController;
   final TextEditingController instructionController;
   final String? pickedImagePath;
-  final String? pickedImageName;
-  final ApiClient api;
   final bool busy;
   final bool reverseLoading;
-  final bool convertingUrl;
   final VoidCallback onPickImage;
   final VoidCallback onClearImage;
   final VoidCallback onSubmit;
-  final ValueChanged<String> onImageUrlChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -528,21 +473,8 @@ class _ReversePanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ShadInput(
-            controller: imageUrlController,
-            keyboardType: TextInputType.url,
-            textInputAction: TextInputAction.next,
-            enabled: pickedImagePath == null && !convertingUrl,
-            onChanged: onImageUrlChanged,
-            placeholder: const Text('https://example.com/image.jpg'),
-            leading: const Icon(LucideIcons.link, size: 18),
-          ),
-          const SizedBox(height: AppGap.sm),
           _ImagePickerPreview(
-            api: api,
-            imageUrlController: imageUrlController,
             pickedImagePath: pickedImagePath,
-            pickedImageName: pickedImageName,
             onPickImage: onPickImage,
             onClearImage: onClearImage,
           ),
@@ -556,10 +488,10 @@ class _ReversePanel extends StatelessWidget {
           const SizedBox(height: AppGap.sm),
           ShadButton(
             onPressed: busy ? null : onSubmit,
-            leading: reverseLoading || convertingUrl
+            leading: reverseLoading
                 ? const AppLoadingSpinner(color: Colors.white)
                 : const Icon(LucideIcons.sparkles),
-            child: Text(convertingUrl ? '正在读取图片...' : '反推提示词'),
+            child: Text(reverseLoading ? '正在提交...' : '反推提示词'),
           ),
         ],
       ),
@@ -569,24 +501,17 @@ class _ReversePanel extends StatelessWidget {
 
 class _ImagePickerPreview extends StatelessWidget {
   const _ImagePickerPreview({
-    required this.api,
-    required this.imageUrlController,
     required this.pickedImagePath,
-    required this.pickedImageName,
     required this.onPickImage,
     required this.onClearImage,
   });
 
-  final ApiClient api;
-  final TextEditingController imageUrlController;
   final String? pickedImagePath;
-  final String? pickedImageName;
   final VoidCallback onPickImage;
   final VoidCallback onClearImage;
 
   @override
   Widget build(BuildContext context) {
-    final previewUrl = _resolvedPreviewUrl(api, imageUrlController.text.trim());
     final hasPickedImage = pickedImagePath != null;
 
     return Column(
@@ -598,51 +523,87 @@ class _ImagePickerPreview extends StatelessWidget {
           child: Text(hasPickedImage ? '重新选择图片' : '选择图片'),
         ),
         const SizedBox(height: AppGap.sm),
-        ImagePreviewFrame(
-          imageUrl: previewUrl,
-          filePath: pickedImagePath,
-          headers: api.authHeaders,
-          placeholderChild: const _ImagePlaceholder(),
-          errorChild: const _ImagePlaceholder(text: '图片预览失败'),
-          overlay: hasPickedImage
-              ? Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Tooltip(
-                    message: '清除图片',
-                    child: ShadIconButton.ghost(
-                      onPressed: onClearImage,
-                      icon: const Icon(LucideIcons.x),
-                    ),
-                  ),
-                )
-              : null,
-        ),
+        if (hasPickedImage)
+          _PickedImagePreviewCard(
+            filePath: pickedImagePath!,
+            onClearImage: onClearImage,
+          )
+        else
+          const ImagePreviewPlaceholderCard(
+            height: 230,
+            text: '选择图片后预览',
+            leadingIcon: LucideIcons.scanSearch,
+          ),
       ],
     );
   }
 }
 
-class _ImagePlaceholder extends StatelessWidget {
-  const _ImagePlaceholder({this.text = '选择图片或填写 URL 后预览'});
+class _PickedImagePreviewCard extends StatelessWidget {
+  const _PickedImagePreviewCard({
+    required this.filePath,
+    required this.onClearImage,
+  });
 
-  final String text;
+  final String filePath;
+  final VoidCallback onClearImage;
+
+  Future<void> _openPreview(BuildContext context) {
+    return showImagePreviewOverlay(
+      context: context,
+      images: [PreviewImageItem(filePath: filePath, heroTag: filePath)],
+      headers: const {},
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(LucideIcons.scanSearch, size: 42),
-          const SizedBox(height: AppGap.sm),
-          Text(
-            text,
-            textAlign: TextAlign.center,
-            style: ShadTheme.of(context).textTheme.muted,
-          ),
-        ],
+    return ShadCard(
+      padding: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 230,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            InkWell(
+              onTap: () => _openPreview(context),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: ShadTheme.of(context).colorScheme.background,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final cacheWidth = previewCacheExtentFor(
+                      context,
+                      constraints.maxWidth,
+                      min: 160,
+                      max: 960,
+                    );
+                    return Image.file(
+                      File(filePath),
+                      fit: BoxFit.cover,
+                      cacheWidth: cacheWidth,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const ImagePreviewEmptyState(text: '图片预览失败'),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 8,
+              child: Tooltip(
+                message: '清除图片',
+                child: ShadIconButton.ghost(
+                  onPressed: onClearImage,
+                  icon: const Icon(LucideIcons.x),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -792,15 +753,6 @@ class _ResultBlockData {
   final String title;
   final String value;
   final String placeholder;
-}
-
-String? _resolvedPreviewUrl(ApiClient api, String value) {
-  if (value.isEmpty) return null;
-  try {
-    return api.resolveUrl(value).toString();
-  } catch (_) {
-    return null;
-  }
 }
 
 Future<String> _fileToDataUrl(String path, String fileName) async {

@@ -5,9 +5,9 @@ import 'package:flutter/services.dart';
 
 import '../../../models/image_task.dart';
 import '../../../services/api_client.dart';
-import '../../gallery/widgets/image_preview_card.dart';
 import 'task_status_chip.dart';
 import '../../../shared/app_ui.dart';
+import '../../../shared/image_preview_widgets.dart';
 
 String formatImageTaskTime(String value) {
   final parsed = parseImageTaskTime(value);
