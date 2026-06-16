@@ -9,6 +9,7 @@ import '../gallery/widgets/search_filter_header.dart';
 import 'widgets/task_widgets.dart';
 import 'image_task_detail_page.dart';
 import '../../shared/app_ui.dart';
+import '../../theme/app_theme.dart';
 
 class ImageTaskListPage extends StatefulWidget {
   const ImageTaskListPage({super.key, required this.api, this.onReuseDraft});
@@ -105,7 +106,7 @@ class _ImageTaskListPageState extends State<ImageTaskListPage>
   }
 
   void _unfocusSearch() {
-    FocusManager.instance.primaryFocus?.unfocus();
+    unfocusPrimaryFocus();
   }
 
   @override
@@ -217,7 +218,6 @@ class _ImageTaskListPageState extends State<ImageTaskListPage>
     return AppPageScaffold(
       controller: _scrollController,
       onRefresh: () => _loadTasks(reset: true),
-      onBackgroundTap: _unfocusSearch,
       children: [
         SearchFilterHeader(
           searchController: _searchController,
@@ -281,7 +281,7 @@ class _ImageTaskListPageState extends State<ImageTaskListPage>
             _reloadForFilters();
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppGap.sm),
         if (_tasks.isEmpty)
           EmptyState(
             icon: LucideIcons.images,

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +7,8 @@ import 'package:flutter/services.dart';
 import '../../models/prompt_tools.dart';
 import '../../services/api_client.dart';
 import '../../shared/app_ui.dart';
+import '../../shared/image_preview_widgets.dart';
+import '../../theme/app_theme.dart';
 
 const _defaultReverseInstruction =
     '请分析这张图片，反推生成它的高细节 AI 绘画提示词。重点描述主体外观、五官表情、视线、动作姿态、服饰材质、道具、背景物品布局、空间层次、构图镜头、光影色彩、氛围风格和渲染质感，不要写成简短摘要。';
@@ -278,7 +279,6 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
   Widget build(BuildContext context) {
     return AppPageScaffold(
       onRefresh: _loadConfigs,
-      onBackgroundTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 34),
       children: [
         _HeaderSection(
@@ -291,11 +291,11 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
           onConfigChanged: _selectConfig,
           onModelChanged: (value) => setState(() => _model = value),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppGap.md),
         ShadTabs<_PromptToolMode>(
           value: _mode,
           onChanged: (value) {
-            FocusManager.instance.primaryFocus?.unfocus();
+            unfocusPrimaryFocus();
             setState(() => _mode = value);
           },
           tabBarConstraints: const BoxConstraints(maxWidth: double.infinity),
@@ -318,7 +318,7 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppGap.md),
         if (_mode == _PromptToolMode.reverse)
           _ReversePanel(
             imageUrlController: _imageUrlController,
@@ -342,7 +342,7 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
             loading: _modifyLoading,
             onSubmit: _submitModify,
           ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppGap.md),
         if (_mode == _PromptToolMode.reverse)
           _ResultSection(
             title: '反推结果',
@@ -350,12 +350,12 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
               _ResultBlockData(
                 title: '英文提示词',
                 value: _reverseResult?.promptEn ?? '',
-                placeholder: '反推完成后显示英文 AI 绘画提示词。',
+                placeholder: '暂无数据，请先点击上方按钮',
               ),
               _ResultBlockData(
                 title: '中文描述',
                 value: _reverseResult?.promptCn ?? '',
-                placeholder: '反推完成后显示中文详细描述。',
+                placeholder: '暂无数据，请先点击上方按钮',
               ),
             ],
             onCopy: _copyText,
@@ -367,12 +367,12 @@ class _PromptToolsPageState extends State<PromptToolsPage> {
               _ResultBlockData(
                 title: '新英文提示词',
                 value: _modifyResult?.newPromptEn ?? '',
-                placeholder: '改写完成后显示新的英文提示词。',
+                placeholder: '暂无数据，请先点击上方按钮',
               ),
               _ResultBlockData(
                 title: '新中文提示词',
                 value: _modifyResult?.newPromptCn ?? '',
-                placeholder: '改写完成后显示新的中文提示词。',
+                placeholder: '暂无数据，请先点击上方按钮',
               ),
             ],
             onCopy: _copyText,
@@ -434,7 +434,7 @@ class _HeaderSection extends StatelessWidget {
                 .toList(),
             onChanged: onConfigChanged,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.sm),
           _buildShadSelect<String>(
             context: context,
             label: '模型',
@@ -466,7 +466,7 @@ Widget _buildShadSelect<T>({
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Text(label, style: ShadTheme.of(context).textTheme.muted),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppGap.xs),
       ShadSelect<T>(
         enabled: hasOptions,
         initialValue: hasOptions ? value : null,
@@ -537,7 +537,7 @@ class _ReversePanel extends StatelessWidget {
             placeholder: const Text('https://example.com/image.jpg'),
             leading: const Icon(LucideIcons.link, size: 18),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.sm),
           _ImagePickerPreview(
             api: api,
             imageUrlController: imageUrlController,
@@ -546,14 +546,14 @@ class _ReversePanel extends StatelessWidget {
             onPickImage: onPickImage,
             onClearImage: onClearImage,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.sm),
           ShadTextarea(
             controller: instructionController,
             minHeight: 92,
             maxHeight: 150,
             placeholder: const Text('分析指令'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.sm),
           ShadButton(
             onPressed: busy ? null : onSubmit,
             leading: reverseLoading || convertingUrl
@@ -588,7 +588,6 @@ class _ImagePickerPreview extends StatelessWidget {
   Widget build(BuildContext context) {
     final previewUrl = _resolvedPreviewUrl(api, imageUrlController.text.trim());
     final hasPickedImage = pickedImagePath != null;
-    final hasPreview = hasPickedImage || previewUrl != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -598,69 +597,28 @@ class _ImagePickerPreview extends StatelessWidget {
           leading: const Icon(LucideIcons.imagePlus),
           child: Text(hasPickedImage ? '重新选择图片' : '选择图片'),
         ),
-        const SizedBox(height: 10),
-        ShadCard(
-          padding: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            height: 230,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: hasPreview
-                      ? _PreviewImage(
-                          api: api,
-                          filePath: pickedImagePath,
-                          url: previewUrl,
-                        )
-                      : const _ImagePlaceholder(),
-                ),
-                if (hasPickedImage)
-                  Positioned(
-                    right: 8,
-                    top: 8,
-                    child: Tooltip(
-                      message: '清除图片',
-                      child: ShadIconButton.ghost(
-                        onPressed: onClearImage,
-                        icon: const Icon(LucideIcons.x),
-                      ),
+        const SizedBox(height: AppGap.sm),
+        ImagePreviewFrame(
+          imageUrl: previewUrl,
+          filePath: pickedImagePath,
+          headers: api.authHeaders,
+          placeholderChild: const _ImagePlaceholder(),
+          errorChild: const _ImagePlaceholder(text: '图片预览失败'),
+          overlay: hasPickedImage
+              ? Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Tooltip(
+                    message: '清除图片',
+                    child: ShadIconButton.ghost(
+                      onPressed: onClearImage,
+                      icon: const Icon(LucideIcons.x),
                     ),
                   ),
-              ],
-            ),
-          ),
+                )
+              : null,
         ),
       ],
-    );
-  }
-}
-
-class _PreviewImage extends StatelessWidget {
-  const _PreviewImage({required this.api, this.filePath, this.url});
-
-  final ApiClient api;
-  final String? filePath;
-  final String? url;
-
-  @override
-  Widget build(BuildContext context) {
-    final path = filePath;
-    if (path != null) {
-      return Image.file(File(path), fit: BoxFit.cover);
-    }
-    final imageUrl = url;
-    if (imageUrl == null) return const _ImagePlaceholder();
-    return Image.network(
-      imageUrl,
-      fit: BoxFit.cover,
-      headers: api.authHeaders,
-      errorBuilder: (_, _, _) => const _ImagePlaceholder(text: '图片预览失败'),
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return const Center(child: AppLoadingSpinner(size: 28));
-      },
     );
   }
 }
@@ -678,7 +636,7 @@ class _ImagePlaceholder extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(LucideIcons.scanSearch, size: 42),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.sm),
           Text(
             text,
             textAlign: TextAlign.center,
@@ -712,23 +670,23 @@ class _ModifyPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('原始提示词', style: ShadTheme.of(context).textTheme.muted),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.xs),
           ShadTextarea(
             controller: originalPromptController,
             minHeight: 116,
             maxHeight: 210,
             placeholder: const Text(_exampleOriginalPrompt),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.sm),
           Text('修改要求', style: ShadTheme.of(context).textTheme.muted),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.xs),
           ShadTextarea(
             controller: editRequirementController,
             minHeight: 92,
             maxHeight: 150,
             placeholder: const Text(_exampleEditRequirement),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.sm),
           ShadButton(
             onPressed: busy ? null : onSubmit,
             leading: loading
@@ -760,9 +718,9 @@ class _ResultSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(title, style: ShadTheme.of(context).textTheme.h4),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.sm),
           for (var index = 0; index < blocks.length; index++) ...[
-            if (index > 0) const SizedBox(height: 12),
+            if (index > 0) const SizedBox(height: AppGap.sm),
             _ResultBlock(data: blocks[index], onCopy: onCopy),
           ],
         ],
@@ -799,7 +757,7 @@ class _ResultBlock extends StatelessWidget {
           ],
         ),
         ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 116, maxHeight: 240),
+          constraints: const BoxConstraints(minHeight: 100, maxHeight: 220),
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: theme.colorScheme.background,
@@ -807,7 +765,7 @@ class _ResultBlock extends StatelessWidget {
               border: Border.all(color: theme.colorScheme.border),
             ),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               physics: const ClampingScrollPhysics(),
               child: SelectableText(
                 hasValue ? data.value : data.placeholder,

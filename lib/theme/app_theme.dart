@@ -5,7 +5,16 @@ const imageAccent = Color(0xFFFB7299);
 const imageMutedText = Color(0xFF7E8492);
 const imagePrimaryText = Color(0xFF2F3440);
 const imageError = Color(0xFFE65C84);
-const imagePagePadding = EdgeInsets.fromLTRB(16, 8, 16, 30);
+const imagePagePadding = EdgeInsets.fromLTRB(16, AppGap.sm, 16, 30);
+
+class AppGap {
+  const AppGap._();
+
+  static const xs = 4.0;
+  static const sm = 8.0;
+  static const md = 16.0;
+  static const lg = 24.0;
+}
 
 // 任务状态徽章配色，统一供任务列表和详情状态标识使用。
 const imageRunningBadgeBackground = Color(0xFFF4F0FF);

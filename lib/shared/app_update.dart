@@ -92,8 +92,8 @@ class AppUpdateChecker {
             description: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '当前版本 $currentVersion\n'
-                '最新版本 ${release.version}\n',
+                '当前版本 $currentVersion，'
+                '最新版本 ${release.version}',
                 textAlign: TextAlign.left,
               ),
             ),
@@ -104,7 +104,7 @@ class AppUpdateChecker {
               ),
               ShadButton(
                 leading: const Icon(LucideIcons.download, size: 18),
-                child: const Text('后台下载'),
+                child: const Text('立即更新'),
                 onPressed: () => Navigator.of(context).pop(true),
               ),
             ],

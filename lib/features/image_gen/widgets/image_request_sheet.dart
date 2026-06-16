@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../models/image_task.dart';
-import '../../gallery/widgets/image_preview_card.dart';
 import '../../../shared/app_ui.dart';
+import '../../../shared/image_preview_widgets.dart';
+import '../../../theme/app_theme.dart';
 
 class ImageRequestSheet extends StatelessWidget {
   const ImageRequestSheet({
@@ -88,9 +89,7 @@ class ImageRequestSheet extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          const Text('正向提示词'),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.md),
           ShadTextarea(
             controller: promptController,
             onPressedOutside: (_) => onUnfocus(),
@@ -99,9 +98,7 @@ class ImageRequestSheet extends StatelessWidget {
             maxLength: 10000,
             placeholder: const Text('输入要生成的画面、风格、构图和细节'),
           ),
-          const SizedBox(height: 10),
-          const Text('反向提示词'),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppGap.sm),
           ShadTextarea(
             controller: negativePromptController,
             onPressedOutside: (_) => onUnfocus(),
@@ -111,7 +108,7 @@ class ImageRequestSheet extends StatelessWidget {
             placeholder: const Text('反向提示词：描述不希望出现的内容，例如低清晰度、变形手指、多余文字'),
           ),
           if (mode == ImageMode.edit) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppGap.sm),
             _UploadPanel(
               images: images,
               onPickImages: onPickImages,
@@ -119,7 +116,7 @@ class ImageRequestSheet extends StatelessWidget {
               onRemoveImage: onRemoveImage,
             ),
           ],
-          const SizedBox(height: 12),
+          const SizedBox(height: AppGap.md),
           _OptionGrid(
             configId: configId,
             configs: configs,
@@ -137,7 +134,7 @@ class ImageRequestSheet extends StatelessWidget {
             onBackgroundChanged: onBackgroundChanged,
             onCountChanged: onCountChanged,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppGap.sm),
           ShadButton(
             onPressed: submitting ? null : onSubmit,
             leading: submitting
@@ -230,45 +227,70 @@ class _OptionGrid extends StatelessWidget {
       ),
     ];
 
+    final advancedFields = [
+      ...stringFields.map(
+        (field) => _SelectField(
+          label: field.label,
+          value: field.value,
+          options: field.options,
+          onChanged: field.onChanged,
+        ),
+      ),
+      _SelectField(
+        label: '生成数量',
+        value: '$count',
+        options: List.generate(
+          4,
+          (index) => ImageOption('${index + 1}', '${index + 1}'),
+        ),
+        onChanged: (value) => onCountChanged(int.parse(value)),
+      ),
+    ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth > 620;
-        return GridView.count(
-          crossAxisCount: isWide ? 2 : 1,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          mainAxisExtent: 78,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildShadSelect<String>(
               context: context,
               label: 'API',
               value: configId,
               options: configs
-                  .map((config) => (value: config.id, label: config.name))
+                  .map((config) => ImageOption(config.id, config.name))
                   .toList(),
               onChanged: onConfigChanged,
             ),
-            for (final field in stringFields)
-              _buildShadSelect<String>(
-                context: context,
-                label: field.label,
-                value: field.value,
-                options: field.options
-                    .map((option) => (value: option.value, label: option.label))
-                    .toList(),
-                onChanged: field.onChanged,
-              ),
-            _buildShadSelect<int>(
-              context: context,
-              label: '生成数量',
-              value: count,
-              options: List.generate(
-                4,
-                (index) => (value: index + 1, label: '${index + 1}'),
-              ),
-              onChanged: onCountChanged,
+            const SizedBox(height: AppGap.sm),
+            ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              childrenPadding: const EdgeInsets.only(top: AppGap.sm),
+              title: Text('高级设置', style: ShadTheme.of(context).textTheme.muted),
+              children: [
+                LayoutBuilder(
+                  builder: (context, innerConstraints) {
+                    final columns = innerConstraints.maxWidth > 620 ? 2 : 1;
+                    return GridView.count(
+                      crossAxisCount: columns,
+                      mainAxisSpacing: AppGap.sm,
+                      crossAxisSpacing: AppGap.sm,
+                      mainAxisExtent: 78,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        for (final field in advancedFields)
+                          _buildShadSelect<String>(
+                            context: context,
+                            label: field.label,
+                            value: field.value,
+                            options: field.options,
+                            onChanged: field.onChanged,
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ],
             ),
           ],
         );
@@ -277,11 +299,25 @@ class _OptionGrid extends StatelessWidget {
   }
 }
 
+class _SelectField<T> {
+  const _SelectField({
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+  });
+
+  final String label;
+  final T value;
+  final List<ImageOption> options;
+  final ValueChanged<T> onChanged;
+}
+
 Widget _buildShadSelect<T>({
   required BuildContext context,
   required String label,
   required T value,
-  required List<({T value, String label})> options,
+  required List<ImageOption> options,
   required ValueChanged<T> onChanged,
 }) {
   // 预索引选项文案，避免同一次构建内重复线性扫描。
@@ -293,15 +329,14 @@ Widget _buildShadSelect<T>({
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
       Text(label, style: ShadTheme.of(context).textTheme.muted),
-      const SizedBox(height: 6),
+      const SizedBox(height: AppGap.xs),
       ShadSelect<T>(
         initialValue: value,
         minWidth: 180,
         placeholder: Text(selectedLabel ?? label),
         options: options
             .map(
-              (option) =>
-                  ShadOption<T>(value: option.value, child: Text(option.label)),
+              (option) => ShadOption<T>(value: option.value as T, child: Text(option.label)),
             )
             .toList(),
         selectedOptionBuilder: (_, selectedValue) {
@@ -346,7 +381,7 @@ class _UploadPanel extends StatelessWidget {
           child: Text(images.isEmpty ? '选择参考图' : '继续添加 (${images.length}/16)'),
         ),
         if (images.isNotEmpty) ...[
-          const SizedBox(height: 10),
+          const SizedBox(height: AppGap.sm),
           SizedBox(
             height: 92,
             child: ListView.separated(
@@ -382,7 +417,7 @@ class _UploadPanel extends StatelessWidget {
                   ),
                 );
               },
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              separatorBuilder: (_, _) => const SizedBox(width: AppGap.sm),
               itemCount: images.length,
             ),
           ),

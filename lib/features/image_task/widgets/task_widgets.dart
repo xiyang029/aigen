@@ -17,6 +17,13 @@ String formatImageTaskTime(String value) {
       '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}:${local.second.toString().padLeft(2, '0')}';
 }
 
+String formatImageTaskClockTime(String value) {
+  final parsed = parseImageTaskTime(value);
+  if (parsed == null) return value;
+  final local = parsed.toLocal();
+  return '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+}
+
 DateTime? parseImageTaskTime(String value) {
   final normalized = value.trim().replaceFirst(' ', 'T');
   final hasTimezone = RegExp(r'(Z|[+-]\d{2}:?\d{2})$').hasMatch(normalized);
@@ -121,7 +128,7 @@ class ImageTaskTile extends StatelessWidget {
               const SizedBox(height: 6),
               _IconText(
                 icon: LucideIcons.clock,
-                text: formatTime(task.createdAt),
+                text: formatImageTaskClockTime(task.createdAt),
               ),
             ],
           ),
@@ -186,7 +193,16 @@ class ImageTaskGroupedCardList extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Text(entry.key, style: ShadTheme.of(context).textTheme.h4),
+                Text(
+                  entry.key,
+                  style: ShadTheme.of(context).textTheme.h4.copyWith(
+                    height:
+                        20 /
+                        ShadTheme.of(
+                          context,
+                        ).textTheme.h4.fontSize!, // 如果你想让总高度绝对等于20dp
+                  ),
+                ),
                 const SizedBox(width: 8),
                 ShadBadge.secondary(child: Text('${entry.value.length} 条')),
               ],
@@ -452,10 +468,6 @@ class ImageTaskDetailPanel extends StatelessWidget {
                 );
               },
             ),
-          if (current.params != null) ...[
-            const SizedBox(height: 12),
-            _ParamGrid(meta: current.params!),
-          ],
         ],
       ),
     );
@@ -521,78 +533,6 @@ class _PromptCard extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ParamGrid extends StatelessWidget {
-  const _ParamGrid({required this.meta});
-
-  final GenerationMeta meta;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = [
-      ('尺寸', meta.requestedSize),
-      ('质量', meta.quality),
-      ('格式', meta.outputFormat),
-      ('审核', meta.moderation),
-      ('背景', meta.background),
-      ('数量', '${meta.count}'),
-    ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text('请求参数', style: ShadTheme.of(context).textTheme.h4),
-        const SizedBox(height: 10),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final columns = (constraints.maxWidth / 120).floor().clamp(2, 4);
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: items.length,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-                mainAxisExtent: 62,
-              ),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return _ParamTile(label: item.$1, value: item.$2);
-              },
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _ParamTile extends StatelessWidget {
-  const _ParamTile({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return ShadCard(
-      padding: const EdgeInsets.all(10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: ShadTheme.of(context).textTheme.small,
-          ),
-        ],
-      ),
     );
   }
 }
@@ -698,11 +638,11 @@ class _IconText extends StatelessWidget {
       children: [
         Icon(
           icon,
-          size: 15,
+          size: 14,
           color: pill ? null : theme.colorScheme.mutedForeground,
         ),
-        SizedBox(width: pill ? 5 : 4),
-        Flexible(child: label),
+        SizedBox(width: pill ? 4 : 4),
+        label,
       ],
     );
     return pill ? ShadBadge.secondary(child: content) : content;

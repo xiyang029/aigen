@@ -33,7 +33,6 @@ class AppPageScaffold extends StatelessWidget {
     required this.children,
     required this.onRefresh,
     this.controller,
-    this.onBackgroundTap,
     this.padding = imagePagePadding,
     this.floatingActionButton,
   });
@@ -41,7 +40,6 @@ class AppPageScaffold extends StatelessWidget {
   final List<Widget> children;
   final Future<void> Function() onRefresh;
   final ScrollController? controller;
-  final VoidCallback? onBackgroundTap;
   final EdgeInsetsGeometry padding;
   final Widget? floatingActionButton;
 
@@ -58,17 +56,13 @@ class AppPageScaffold extends StatelessWidget {
 
     return Scaffold(
       floatingActionButton: floatingActionButton,
-      body: SafeArea(
-        child: onBackgroundTap == null
-            ? refreshList
-            : GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: onBackgroundTap,
-                child: refreshList,
-              ),
-      ),
+      body: SafeArea(child: refreshList),
     );
   }
+}
+
+void unfocusPrimaryFocus() {
+  FocusManager.instance.primaryFocus?.unfocus();
 }
 
 class EmptyState extends StatelessWidget {

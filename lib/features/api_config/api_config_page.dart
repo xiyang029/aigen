@@ -316,10 +316,10 @@ class _ConfigTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = ShadTheme.of(context);
-    final subtitle = [
-      if (baseUrl.isNotEmpty) baseUrl else '未填写 API 地址',
+    final subtitleLines = <String>[
+      if (baseUrl.isNotEmpty) baseUrl,
       if (model.isNotEmpty) '模型：$model',
-    ].join('\n');
+    ];
     return ShadCard(
       child: Row(
         children: [
@@ -345,12 +345,13 @@ class _ConfigTile extends StatelessWidget {
                   style: theme.textTheme.h4,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.muted,
-                ),
+                if (subtitleLines.isNotEmpty)
+                  Text(
+                    subtitleLines.join('\n'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.muted,
+                  ),
               ],
             ),
           ),
@@ -465,50 +466,52 @@ class _ConfigEditorSheetState extends State<_ConfigEditorSheet> {
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
-        child: Padding(
+        child: ListView.separated(
+          shrinkWrap: true,
           padding: const EdgeInsets.only(top: 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ShadInput(
+          physics: const NeverScrollableScrollPhysics(),
+          itemBuilder: (context, index) {
+            return switch (index) {
+              0 => ShadInput(
                 controller: _nameController,
                 textInputAction: TextInputAction.next,
                 placeholder: const Text('配置名称'),
                 leading: const Icon(LucideIcons.badge, size: 18),
               ),
-              const SizedBox(height: 12),
-              ShadInput(
+              1 => ShadInput(
                 controller: _baseUrlController,
                 keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.next,
                 placeholder: const Text('https://api.example.com/v1'),
                 leading: const Icon(LucideIcons.link, size: 18),
               ),
-              const SizedBox(height: 12),
-              AppObscuredInput(
+              2 => AppObscuredInput(
                 controller: _apiKeyController,
                 textInputAction: TextInputAction.next,
-                placeholder: widget.isEditing ? '新 API Key（留空则不修改）' : 'API Key',
+                placeholder: widget.isEditing
+                    ? '新 API Key（留空则不修改）'
+                    : 'API Key',
                 icon: LucideIcons.keyRound,
               ),
-              const SizedBox(height: 12),
-              ShadTextarea(
+              3 => ShadTextarea(
                 controller: _modelController,
                 minHeight: _isPrompt ? 92 : 44,
                 maxHeight: _isPrompt ? 150 : 76,
                 placeholder: Text(
-                  _isPrompt ? '模型列表：每行一个或用逗号分隔，例如：gpt-4o' : '模型：留空则使用服务端默认模型',
+                  _isPrompt
+                      ? '模型列表：每行一个或用逗号分隔，例如：gpt-4o'
+                      : '模型：留空则使用服务端默认模型',
                 ),
               ),
-              const SizedBox(height: 18),
-              ShadButton(
+              _ => ShadButton(
                 onPressed: _submit,
                 leading: const Icon(LucideIcons.save),
                 child: Text(widget.isEditing ? '保存配置' : '新增配置'),
               ),
-            ],
-          ),
+            };
+          },
+          separatorBuilder: (context, separatorIndex) => const SizedBox(height: 12),
+          itemCount: 5,
         ),
       ),
     );

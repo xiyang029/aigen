@@ -8,6 +8,7 @@ import 'widgets/gallery_actions.dart';
 import 'widgets/image_preview_card.dart';
 import 'widgets/search_filter_header.dart';
 import '../../shared/app_ui.dart';
+import '../../theme/app_theme.dart';
 
 class ImageGalleryPage extends StatefulWidget {
   const ImageGalleryPage({super.key, required this.api});
@@ -109,7 +110,7 @@ class _ImageGalleryPageState extends State<ImageGalleryPage> {
   }
 
   void _unfocusSearch() {
-    FocusManager.instance.primaryFocus?.unfocus();
+    unfocusPrimaryFocus();
   }
 
   Future<void> _downloadImage(ImageGalleryItem item) async {
@@ -135,7 +136,6 @@ class _ImageGalleryPageState extends State<ImageGalleryPage> {
     return AppPageScaffold(
       controller: _scrollController,
       onRefresh: () => _loadGallery(),
-      onBackgroundTap: _unfocusSearch,
       children: [
         SearchFilterHeader(
           searchController: _searchController,
@@ -148,7 +148,7 @@ class _ImageGalleryPageState extends State<ImageGalleryPage> {
             _reload();
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppGap.sm),
         if (_items.isEmpty)
           EmptyState(
             icon: LucideIcons.grid3x3,

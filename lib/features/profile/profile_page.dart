@@ -11,6 +11,8 @@ import '../../shared/app_update.dart';
 import '../api_config/api_config_page.dart';
 import '../prompt_tools/prompt_tools_page.dart';
 import '../../shared/app_ui.dart';
+import '../../theme/app_theme.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.api, required this.onLogout});
@@ -25,6 +27,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
   AppUser? _user;
   AppUpdateChecker? _updateChecker;
+  String _currentVersion = '';
   bool _loadingUser = true;
   bool _clearingImageCache = false;
 
@@ -33,6 +36,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUser();
+    _loadVersion();
   }
 
   @override
@@ -70,6 +74,12 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     } finally {
       if (mounted) setState(() => _loadingUser = false);
     }
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() => _currentVersion = info.version);
   }
 
   Future<void> _handleUnauthorized() async {
@@ -120,7 +130,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     final confirmed = await showAppConfirmDialog(
       context: context,
       title: '删除图片缓存',
-      description: '确定要删除本地图片预览缓存吗？之后打开图片会重新加载。',
+      description: '确定要删除本地图片预览缓存吗？',
       confirmText: '删除',
       confirmIcon: LucideIcons.trash2,
     );
@@ -166,6 +176,11 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
       (label: '提示词工具', icon: LucideIcons.brain, onPressed: _openPromptTools),
       (label: 'API 配置管理', icon: LucideIcons.key, onPressed: _openApiConfigs),
       (label: '修改密码', icon: LucideIcons.keyRound, onPressed: _changePassword),
+      (
+        label: _currentVersion.isEmpty ? '当前版本' : '当前版本 $_currentVersion',
+        icon: LucideIcons.info,
+        onPressed: null,
+      ),
       (label: '检查更新', icon: LucideIcons.refreshCw, onPressed: _checkForUpdates),
       (
         label: _clearingImageCache ? '清理中...' : '删除图片缓存',
@@ -199,7 +214,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(accountName, style: theme.textTheme.h4),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: AppGap.xs),
                           Text(
                             user?.email ?? '未获取到账号信息',
                             style: theme.textTheme.muted,
@@ -210,7 +225,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppGap.sm),
         ShadCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -264,11 +279,12 @@ class _ProfileActionRow extends StatelessWidget {
             Expanded(
               child: Text(label, style: enabled ? null : theme.textTheme.muted),
             ),
-            Icon(
-              LucideIcons.chevronRight,
-              color: theme.colorScheme.mutedForeground,
-              size: 20,
-            ),
+            if (enabled)
+              Icon(
+                LucideIcons.chevronRight,
+                color: theme.colorScheme.mutedForeground,
+                size: 20,
+              ),
           ],
         ),
       ),

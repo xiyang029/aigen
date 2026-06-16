@@ -13,6 +13,7 @@ import '../image_task/image_task_detail_page.dart';
 import '../image_task/widgets/task_widgets.dart';
 import 'widgets/image_request_sheet.dart';
 import '../../shared/app_ui.dart';
+import '../../theme/app_theme.dart';
 
 const _defaultNegativePrompt =
     'low quality, blurry, pixelated, jpeg artifacts, deformed anatomy, bad hands, extra fingers, missing fingers, extra limbs, duplicate, cropped, watermark, signature, text';
@@ -93,7 +94,7 @@ class ImageGenPageState extends State<ImageGenPage>
   }
 
   void _unfocusPrompt() {
-    FocusManager.instance.primaryFocus?.unfocus();
+    unfocusPrimaryFocus();
   }
 
   void clearFocus() => _unfocusPrompt();
@@ -347,7 +348,6 @@ class ImageGenPageState extends State<ImageGenPage>
     return AppPageScaffold(
       controller: _scrollController,
       onRefresh: _loadTasks,
-      onBackgroundTap: _unfocusPrompt,
       children: [
         ImageRequestSheet(
           mode: _mode,
@@ -365,7 +365,7 @@ class ImageGenPageState extends State<ImageGenPage>
           submitting: _submitting,
           onUnfocus: _unfocusPrompt,
           onModeChanged: (value) {
-            _unfocusPrompt();
+            unfocusPrimaryFocus();
             setState(() => _mode = value);
           },
           onPickImages: () {
@@ -389,7 +389,7 @@ class ImageGenPageState extends State<ImageGenPage>
           onCountChanged: (value) => setState(() => _count = value),
           onSubmit: _submit,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: AppGap.md),
         Row(
           children: [
             Text('进行中', style: ShadTheme.of(context).textTheme.h3),
@@ -397,7 +397,7 @@ class ImageGenPageState extends State<ImageGenPage>
             ShadBadge(child: Text('活跃 ${_tasks.length}')),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: AppGap.sm),
         if (_tasks.isEmpty)
           EmptyState(
             icon: LucideIcons.images,
