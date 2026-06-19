@@ -380,8 +380,7 @@ class _HeaderSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildShadSelect<String>(
-            context: context,
+          AppSelectField<String>(
             label: '提示词 API',
             value: selectedConfigId,
             options: configs
@@ -390,8 +389,7 @@ class _HeaderSection extends StatelessWidget {
             onChanged: onConfigChanged,
           ),
           const SizedBox(height: AppGap.sm),
-          _buildShadSelect<String>(
-            context: context,
+          AppSelectField<String>(
             label: '模型',
             value: model,
             options: modelOptions
@@ -403,49 +401,6 @@ class _HeaderSection extends StatelessWidget {
       ),
     );
   }
-}
-
-Widget _buildShadSelect<T>({
-  required BuildContext context,
-  required String label,
-  required T value,
-  required List<({T value, String label})> options,
-  required ValueChanged<T> onChanged,
-}) {
-  final hasOptions = options.isNotEmpty;
-  final selectedLabel = options
-      .where((option) => option.value == value)
-      .map((option) => option.label)
-      .firstOrNull;
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(label, style: ShadTheme.of(context).textTheme.muted),
-      const SizedBox(height: AppGap.xs),
-      ShadSelect<T>(
-        enabled: hasOptions,
-        initialValue: hasOptions ? value : null,
-        minWidth: 180,
-        placeholder: Text(selectedLabel ?? (hasOptions ? label : '暂无可选项')),
-        options: options
-            .map(
-              (option) =>
-                  ShadOption<T>(value: option.value, child: Text(option.label)),
-            )
-            .toList(),
-        selectedOptionBuilder: (_, selectedValue) {
-          final selectedOption = options.firstWhere(
-            (option) => option.value == selectedValue,
-            orElse: () => (value: selectedValue, label: '$selectedValue'),
-          );
-          return Text(selectedOption.label);
-        },
-        onChanged: (nextValue) {
-          if (nextValue != null) onChanged(nextValue);
-        },
-      ),
-    ],
-  );
 }
 
 class _ReversePanel extends StatelessWidget {
@@ -592,14 +547,11 @@ class _PickedImagePreviewCard extends StatelessWidget {
               ),
             ),
             Positioned(
-              right: 8,
-              top: 8,
-              child: Tooltip(
-                message: '清除图片',
-                child: ShadIconButton.ghost(
-                  onPressed: onClearImage,
-                  icon: const Icon(LucideIcons.x),
-                ),
+              right: 0,
+              top: 0,
+              child: ShadIconButton.ghost(
+                onPressed: onClearImage,
+                icon: const Icon(LucideIcons.x),
               ),
             ),
           ],
@@ -707,13 +659,12 @@ class _ResultBlock extends StatelessWidget {
         Row(
           children: [
             Expanded(child: Text(data.title, style: theme.textTheme.small)),
-            Tooltip(
-              message: '复制',
-              child: ShadIconButton.ghost(
-                onPressed: hasValue ? () => onCopy(data.value) : null,
-                icon: const Icon(LucideIcons.copy),
-                iconSize: 18,
-              ),
+            ShadIconButton.ghost(
+              onPressed: hasValue ? () => onCopy(data.value) : null,
+              icon: const Icon(LucideIcons.copy),
+              iconSize: 18,
+              width: 32,
+              height: 32,
             ),
           ],
         ),

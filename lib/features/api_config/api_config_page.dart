@@ -356,19 +356,14 @@ class _ConfigTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Tooltip(
-            message: '编辑',
-            child: ShadIconButton.ghost(
-              onPressed: onEdit,
-              icon: const Icon(LucideIcons.pencil),
-            ),
+          ShadIconButton.ghost(
+            onPressed: onEdit,
+            icon: const Icon(LucideIcons.pencil),
           ),
-          Tooltip(
-            message: '删除',
-            child: ShadIconButton.ghost(
-              onPressed: onDelete,
-              icon: const Icon(LucideIcons.trash),
-            ),
+
+          ShadIconButton.ghost(
+            onPressed: onDelete,
+            icon: const Icon(LucideIcons.trash),
           ),
         ],
       ),
@@ -488,9 +483,7 @@ class _ConfigEditorSheetState extends State<_ConfigEditorSheet> {
               2 => AppObscuredInput(
                 controller: _apiKeyController,
                 textInputAction: TextInputAction.next,
-                placeholder: widget.isEditing
-                    ? '新 API Key（留空则不修改）'
-                    : 'API Key',
+                placeholder: widget.isEditing ? '新 API Key（留空则不修改）' : 'API Key',
                 icon: LucideIcons.keyRound,
               ),
               3 => ShadTextarea(
@@ -498,9 +491,7 @@ class _ConfigEditorSheetState extends State<_ConfigEditorSheet> {
                 minHeight: _isPrompt ? 92 : 44,
                 maxHeight: _isPrompt ? 150 : 76,
                 placeholder: Text(
-                  _isPrompt
-                      ? '模型列表：每行一个或用逗号分隔，例如：gpt-4o'
-                      : '模型：留空则使用服务端默认模型',
+                  _isPrompt ? '模型列表：每行一个或用逗号分隔，例如：gpt-4o' : '模型：留空则使用服务端默认模型',
                 ),
               ),
               _ => ShadButton(
@@ -510,7 +501,8 @@ class _ConfigEditorSheetState extends State<_ConfigEditorSheet> {
               ),
             };
           },
-          separatorBuilder: (context, separatorIndex) => const SizedBox(height: 12),
+          separatorBuilder: (context, separatorIndex) =>
+              const SizedBox(height: 12),
           itemCount: 5,
         ),
       ),

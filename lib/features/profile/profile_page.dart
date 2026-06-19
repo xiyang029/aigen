@@ -172,23 +172,61 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
     final user = _user;
     final displayName = (user?.displayName ?? '').trim();
     final accountName = displayName.isNotEmpty ? displayName : '咕咕Do 用户';
-    final actions = <({String label, IconData icon, VoidCallback? onPressed})>[
-      (label: '提示词工具', icon: LucideIcons.brain, onPressed: _openPromptTools),
-      (label: 'API 配置管理', icon: LucideIcons.key, onPressed: _openApiConfigs),
-      (label: '修改密码', icon: LucideIcons.keyRound, onPressed: _changePassword),
-      (
-        label: _currentVersion.isEmpty ? '当前版本' : '当前版本 $_currentVersion',
-        icon: LucideIcons.info,
-        onPressed: null,
-      ),
-      (label: '检查更新', icon: LucideIcons.refreshCw, onPressed: _checkForUpdates),
-      (
-        label: _clearingImageCache ? '清理中...' : '删除图片缓存',
-        icon: LucideIcons.trash2,
-        onPressed: _clearingImageCache ? null : _clearOldImageCache,
-      ),
-      (label: '退出登录', icon: LucideIcons.logOut, onPressed: _logout),
-    ];
+    final actions =
+        <
+          ({
+            String label,
+            IconData icon,
+            VoidCallback? onPressed,
+            Widget? trailing,
+          })
+        >[
+          (
+            label: '提示词工具',
+            icon: LucideIcons.brain,
+            onPressed: _openPromptTools,
+            trailing: null,
+          ),
+          (
+            label: 'API 配置管理',
+            icon: LucideIcons.key,
+            onPressed: _openApiConfigs,
+            trailing: null,
+          ),
+          (
+            label: '修改密码',
+            icon: LucideIcons.keyRound,
+            onPressed: _changePassword,
+            trailing: null,
+          ),
+          (
+            label: '当前版本',
+            icon: LucideIcons.info,
+            onPressed: null,
+            trailing: Text(
+              _currentVersion.isEmpty ? '加载中...' : _currentVersion,
+              style: theme.textTheme.muted, // 保持低调的灰色字体系
+            ),
+          ),
+          (
+            label: '检查更新',
+            icon: LucideIcons.refreshCw,
+            onPressed: _checkForUpdates,
+            trailing: null,
+          ),
+          (
+            label: _clearingImageCache ? '清理中...' : '删除图片缓存',
+            icon: LucideIcons.trash2,
+            onPressed: _clearingImageCache ? null : _clearOldImageCache,
+            trailing: null,
+          ),
+          (
+            label: '退出登录',
+            icon: LucideIcons.logOut,
+            onPressed: _logout,
+            trailing: null,
+          ),
+        ];
 
     return AppPageScaffold(
       onRefresh: _loadUser,
@@ -236,6 +274,7 @@ class _ProfilePageState extends State<ProfilePage> with WidgetsBindingObserver {
                   label: actions[index].label,
                   icon: actions[index].icon,
                   onPressed: actions[index].onPressed,
+                  trailing: actions[index].trailing,
                 ),
               ],
             ],
@@ -251,11 +290,13 @@ class _ProfileActionRow extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onPressed,
+    this.trailing,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback? onPressed;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -265,21 +306,17 @@ class _ProfileActionRow extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: onPressed,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 13),
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 12),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: enabled
-                  ? theme.colorScheme.primary
-                  : theme.colorScheme.mutedForeground,
-              size: 20,
-            ),
+            Icon(icon, color: theme.colorScheme.primary, size: 20),
             const SizedBox(width: 18),
             Expanded(
               child: Text(label, style: enabled ? null : theme.textTheme.muted),
             ),
-            if (enabled)
+            if (trailing != null)
+              trailing!
+            else if (enabled)
               Icon(
                 LucideIcons.chevronRight,
                 color: theme.colorScheme.mutedForeground,

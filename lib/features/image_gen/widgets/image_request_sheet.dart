@@ -190,159 +190,80 @@ class _OptionGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stringFields = [
+    final List<({String label, String value, List<ImageOption> options, ValueChanged<String> onChanged})> advancedFields = [
       (
         label: '质量',
         value: quality,
         options: qualityOptions,
-        icon: LucideIcons.slidersHorizontal,
         onChanged: onQualityChanged,
       ),
       (
         label: '尺寸',
         value: size,
         options: sizeOptions,
-        icon: LucideIcons.ratio,
         onChanged: onSizeChanged,
       ),
       (
         label: '格式',
         value: outputFormat,
         options: outputFormatOptions,
-        icon: LucideIcons.image,
         onChanged: onOutputFormatChanged,
       ),
       (
         label: '审核',
         value: moderation,
         options: moderationOptions,
-        icon: LucideIcons.shieldCheck,
         onChanged: onModerationChanged,
       ),
       (
         label: '背景',
         value: background,
         options: backgroundOptions,
-        icon: LucideIcons.layers,
         onChanged: onBackgroundChanged,
       ),
-    ];
-
-    final advancedFields = [
-      ...stringFields.map(
-        (field) => _SelectField(
-          label: field.label,
-          value: field.value,
-          options: field.options,
-          onChanged: field.onChanged,
-        ),
-      ),
-      _SelectField(
+      (
         label: '生成数量',
         value: '$count',
         options: List.generate(
           4,
           (index) => ImageOption('${index + 1}', '${index + 1}'),
         ),
-        onChanged: (value) => onCountChanged(int.parse(value)),
+        onChanged: (String value) => onCountChanged(int.parse(value)),
       ),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildShadSelect<String>(
-              context: context,
-              label: 'API',
-              value: configId,
-              options: configs
-                  .map((config) => ImageOption(config.id, config.name))
-                  .toList(),
-              onChanged: onConfigChanged,
-            ),
-            const SizedBox(height: AppGap.sm),
-            LayoutBuilder(
-              builder: (context, innerConstraints) {
-                final columns = innerConstraints.maxWidth > 620 ? 2 : 1;
-                // 固定列数控制高级项密度，避免在宽屏下拉长表单。
-                return GridView.count(
-                  crossAxisCount: columns,
-                  mainAxisSpacing: AppGap.sm,
-                  crossAxisSpacing: AppGap.sm,
-                  mainAxisExtent: 78,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  children: [
-                    for (final field in advancedFields)
-                      _buildShadSelect<String>(
-                        context: context,
-                        label: field.label,
-                        value: field.value,
-                        options: field.options,
-                        onChanged: field.onChanged,
-                      ),
-                  ],
-                );
-              },
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppSelectField<String>(
+          label: 'API',
+          value: configId,
+          options: configs
+              .map((config) => (value: config.id, label: config.name))
+              .toList(),
+          onChanged: onConfigChanged,
+        ),
+        const SizedBox(height: AppGap.sm),
+        for (final field in advancedFields) ...[
+          AppSelectField<String>(
+            label: field.label,
+            value: field.value,
+            options: field.options
+                .map(
+                  (option) => (
+                    value: option.value,
+                    label: option.label,
+                  ),
+                )
+                .toList(),
+            onChanged: field.onChanged,
+            emptyPlaceholder: field.label,
+          ),
+          const SizedBox(height: AppGap.xs),
         ],
-      );
-    },
+      ],
     );
   }
-}
-
-class _SelectField<T> {
-  const _SelectField({
-    required this.label,
-    required this.value,
-    required this.options,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T value;
-  final List<ImageOption> options;
-  final ValueChanged<T> onChanged;
-}
-
-Widget _buildShadSelect<T>({
-  required BuildContext context,
-  required String label,
-  required T value,
-  required List<ImageOption> options,
-  required ValueChanged<T> onChanged,
-}) {
-  // 预索引选项文案，避免同一次构建内重复线性扫描。
-  final labelsByValue = {
-    for (final option in options) option.value: option.label,
-  };
-  final selectedLabel = labelsByValue[value];
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Text(label, style: ShadTheme.of(context).textTheme.muted),
-      const SizedBox(height: AppGap.xs),
-      ShadSelect<T>(
-        initialValue: value,
-        minWidth: 180,
-        placeholder: Text(selectedLabel ?? label),
-        options: options
-            .map(
-              (option) => ShadOption<T>(value: option.value as T, child: Text(option.label)),
-            )
-            .toList(),
-        selectedOptionBuilder: (_, selectedValue) {
-          return Text(labelsByValue[selectedValue] ?? '$selectedValue');
-        },
-        onChanged: (nextValue) {
-          if (nextValue != null) onChanged(nextValue);
-        },
-      ),
-    ],
-  );
 }
 
 class _UploadPanel extends StatelessWidget {
@@ -389,12 +310,11 @@ class _UploadPanel extends StatelessWidget {
                       Positioned(
                         right: 0,
                         top: 0,
-                        child: Tooltip(
-                          message: '移除图片',
-                          child: ShadIconButton.ghost(
-                            onPressed: () => onRemoveImage(image.path),
-                            icon: const Icon(LucideIcons.x),
-                          ),
+                        child: ShadIconButton.ghost(
+                          height: 24,
+                          width: 24,
+                          onPressed: () => onRemoveImage(image.path),
+                          icon: const Icon(LucideIcons.x),
                         ),
                       ),
                     ],
@@ -412,10 +332,7 @@ class _UploadPanel extends StatelessWidget {
 }
 
 class _UploadImagePreviewTile extends StatelessWidget {
-  const _UploadImagePreviewTile({
-    required this.filePath,
-    required this.onTap,
-  });
+  const _UploadImagePreviewTile({required this.filePath, required this.onTap});
 
   final String filePath;
   final VoidCallback onTap;
@@ -434,21 +351,20 @@ class _UploadImagePreviewTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: ShadTheme.of(context).colorScheme.background,
               ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cacheWidth = previewCacheExtentFor(
-                      context,
-                      constraints.maxWidth,
-                      min: 92,
-                      max: 320,
-                    );
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final cacheWidth = previewCacheExtentFor(
+                    context,
+                    constraints.maxWidth,
+                    min: 92,
+                    max: 320,
+                  );
                   return Image.file(
                     File(filePath),
                     fit: BoxFit.cover,
                     cacheWidth: cacheWidth,
-                    errorBuilder: (context, error, stackTrace) => const Center(
-                      child: Icon(LucideIcons.imageOff),
-                    ),
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Center(child: Icon(LucideIcons.imageOff)),
                   );
                 },
               ),

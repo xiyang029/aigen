@@ -32,7 +32,7 @@ DateTime? parseImageTaskTime(String value) {
 
 String formatImageTaskElapsedTime(ImageTaskSummary task) {
   final createdAt = parseImageTaskTime(task.createdAt);
-  if (createdAt == null) return '耗时 --';
+  if (createdAt == null) return '--';
 
   final finishedAt = task.finishedAt == null || task.finishedAt!.isEmpty
       ? null
@@ -41,7 +41,7 @@ String formatImageTaskElapsedTime(ImageTaskSummary task) {
   final elapsed = endTime.difference(createdAt.toUtc());
   final safeElapsed = elapsed.isNegative ? Duration.zero : elapsed;
   final text = formatImageTaskDuration(safeElapsed);
-  return finishedAt == null ? '已耗时 $text' : '耗时 $text';
+  return text;
 }
 
 String formatImageTaskDuration(Duration duration) {
@@ -123,12 +123,12 @@ class ImageTaskTile extends StatelessWidget {
                       isLoading: showElapsedLoading,
                     ),
                   ),
+                  Spacer(),
+                  _IconText(
+                    icon: LucideIcons.clock,
+                    text: formatImageTaskClockTime(task.createdAt),
+                  ),
                 ],
-              ),
-              const SizedBox(height: 6),
-              _IconText(
-                icon: LucideIcons.clock,
-                text: formatImageTaskClockTime(task.createdAt),
               ),
             ],
           ),
@@ -193,18 +193,9 @@ class ImageTaskGroupedCardList extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
               children: [
-                Text(
-                  entry.key,
-                  style: ShadTheme.of(context).textTheme.h4.copyWith(
-                    height:
-                        20 /
-                        ShadTheme.of(
-                          context,
-                        ).textTheme.h4.fontSize!, // 如果你想让总高度绝对等于20dp
-                  ),
-                ),
+                Text(entry.key, style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(width: 8),
-                ShadBadge.secondary(child: Text('${entry.value.length} 条')),
+                ShadBadge(child: Text('${entry.value.length} 条')),
               ],
             ),
           ),
@@ -286,23 +277,19 @@ class ImageTaskDetailPanel extends StatelessWidget {
                 child: Text('任务详情', style: ShadTheme.of(context).textTheme.h4),
               ),
               if (current.isFailed)
-                Tooltip(
-                  message: isRetrying ? '重试中' : '重试',
-                  child: ShadIconButton.ghost(
-                    onPressed: isRetrying ? null : onRetry,
-                    icon: isRetrying
-                        ? const AppLoadingSpinner(color: Colors.white)
-                        : const Icon(LucideIcons.rotateCcw),
-                    iconSize: 18,
-                  ),
-                ),
-              Tooltip(
-                message: '删除',
-                child: ShadIconButton.ghost(
-                  onPressed: onDelete,
-                  icon: const Icon(LucideIcons.trash),
+                ShadIconButton.ghost(
+                  onPressed: isRetrying ? null : onRetry,
+                  icon: isRetrying
+                      ? const AppLoadingSpinner(color: Colors.white)
+                      : const Icon(LucideIcons.rotateCcw),
                   iconSize: 18,
                 ),
+              ShadIconButton.ghost(
+                width: 32,
+                height: 32,
+                iconSize: 18,
+                onPressed: onDelete,
+                icon: const Icon(LucideIcons.trash),
               ),
             ],
           ),
@@ -409,11 +396,6 @@ class ImageTaskDetailPanel extends StatelessWidget {
                       cacheKey: api.cacheKeyForUrl(image.url),
                       previewImages: sourcePreviewImages,
                       initialIndex: index,
-                      overlay: ImagePreviewTitleOverlay(
-                        title: image.name.isNotEmpty
-                            ? image.name
-                            : '输入图片 ${index + 1}',
-                      ),
                       onDownloadAt: (imageIndex) =>
                           onDownload(sourceImages[imageIndex].url),
                     );
@@ -458,9 +440,6 @@ class ImageTaskDetailPanel extends StatelessWidget {
                       cacheKey: api.cacheKeyForUrl(image.url),
                       previewImages: previewImages,
                       initialIndex: index,
-                      overlay: ImagePreviewTitleOverlay(
-                        title: '输出图片 ${index + 1}',
-                      ),
                       onDownloadAt: (imageIndex) =>
                           onDownload(images[imageIndex].url),
                     );
@@ -496,16 +475,13 @@ class _PromptCard extends StatelessWidget {
             Expanded(
               child: Text(title, style: ShadTheme.of(context).textTheme.muted),
             ),
-            Tooltip(
-              message: '复制$title',
-              child: ShadIconButton.ghost(
-                width: 32,
-                height: 32,
-                iconSize: 18,
-                padding: EdgeInsets.zero,
-                onPressed: () => _copy(context),
-                icon: const Icon(LucideIcons.copy),
-              ),
+            ShadIconButton.ghost(
+              width: 32,
+              height: 32,
+              iconSize: 18,
+              padding: EdgeInsets.zero,
+              onPressed: () => _copy(context),
+              icon: const Icon(LucideIcons.copy),
             ),
           ],
         ),

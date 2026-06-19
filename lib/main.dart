@@ -80,7 +80,6 @@ class _AigenAppState extends State<AigenApp> {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
-          builder: (context, child) => ShadAppBuilder(child: child!),
           home: home,
         );
       },
@@ -152,7 +151,6 @@ class _AppTabBar extends StatelessWidget {
     ];
 
     return SafeArea(
-      top: false,
       child: SizedBox(
         height: 48,
         child: DecoratedBox(

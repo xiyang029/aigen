@@ -8,7 +8,7 @@ import '../../models/image_task.dart';
 import '../../services/api_client.dart';
 import '../../shared/app_update.dart';
 import '../../utils/active_task_poller.dart';
-import '../gallery/widgets/image_preview_overlay.dart';
+import '../../shared/image_preview_widgets.dart';
 import '../image_task/image_task_detail_page.dart';
 import '../image_task/widgets/task_widgets.dart';
 import 'widgets/image_request_sheet.dart';
@@ -392,7 +392,10 @@ class ImageGenPageState extends State<ImageGenPage>
         const SizedBox(height: AppGap.md),
         Row(
           children: [
-            Text('进行中', style: ShadTheme.of(context).textTheme.h3),
+            Text(
+              '进行中',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(width: 10),
             ShadBadge(child: Text('活跃 ${_tasks.length}')),
           ],

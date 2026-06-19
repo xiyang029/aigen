@@ -104,14 +104,39 @@ class _ImagePreviewOverlayPageState extends State<_ImagePreviewOverlayPage> {
 
   @override
   Widget build(BuildContext context) {
-    final topLabel = widget.topLabelBuilder?.call(_index)?.trim() ?? '';
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Positioned.fill(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ShadIconButton.ghost(
+                    icon: const Icon(
+                      LucideIcons.x,
+                      color: Colors.white,
+                    ),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  if (widget.onDownloadAt != null)
+                    ShadIconButton.ghost(
+                      icon: _downloading
+                          ? const AppLoadingSpinner(
+                              color: Colors.white,
+                            )
+                          : const Icon(
+                              LucideIcons.download,
+                              color: Colors.white,
+                            ),
+                      onPressed: _downloading ? null : _downloadCurrent,
+                    ),
+                ],
+              ),
+            ),
+            Expanded(
               child: PhotoViewGallery.builder(
                 pageController: _pageController,
                 itemCount: widget.images.length,
@@ -143,62 +168,12 @@ class _ImagePreviewOverlayPageState extends State<_ImagePreviewOverlayPage> {
                 },
               ),
             ),
-            Positioned(
-              left: 16,
-              right: 16,
-              top: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Tooltip(
-                    message: '关闭',
-                    child: ShadIconButton.ghost(
-                      icon: const Icon(LucideIcons.x, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ),
-                  if (topLabel.isNotEmpty)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Text(
-                          topLabel,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  if (widget.onDownloadAt != null)
-                    Tooltip(
-                      message: _downloading ? '下载中' : '下载',
-                      child: ShadIconButton.ghost(
-                        icon: _downloading
-                            ? const AppLoadingSpinner(
-                                size: 20,
-                                color: Colors.white,
-                              )
-                            : const Icon(
-                                LucideIcons.download,
-                                color: Colors.white,
-                              ),
-                        onPressed: _downloading ? null : _downloadCurrent,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: 16,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Center(
                 child: ShadBadge(
                   backgroundColor: Colors.transparent,
+                  hoverBackgroundColor: Colors.transparent,
                   child: Text(
                     '${_index + 1}/${widget.images.length}',
                     style: const TextStyle(
@@ -294,8 +269,10 @@ class ImagePreviewCard extends StatelessWidget {
                   fit: fit,
                   cacheWidth: cacheWidth,
                   cacheHeight: cacheHeight,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Center(child: Icon(LucideIcons.imageOff)),
+                  errorBuilder: (context, error, stackTrace) => Container(
+                        color: ShadTheme.of(context).colorScheme.mutedForeground,
+                        child: const Center(child: Icon(LucideIcons.imageOff)),
+                      ),
                 );
               }
 
@@ -316,10 +293,14 @@ class ImagePreviewCard extends StatelessWidget {
                 maxWidthDiskCache: cacheWidth,
                 fadeInDuration: const Duration(milliseconds: 90),
                 fadeOutDuration: Duration.zero,
-                errorWidget: (context, url, error) =>
-                    const Center(child: Icon(LucideIcons.imageOff)),
-                placeholder: (context, url) =>
-                    const Center(child: AppLoadingSpinner(size: 24)),
+                errorWidget: (context, url, error) => Container(
+                      color: ShadTheme.of(context).colorScheme.mutedForeground,
+                      child: const Center(child: Icon(LucideIcons.imageOff)),
+                    ),
+                placeholder: (context, url) => Container(
+                      color: ShadTheme.of(context).colorScheme.mutedForeground,
+                      child: const Center(child: AppLoadingSpinner(size: 24)),
+                    ),
               );
             },
           ),
@@ -327,10 +308,7 @@ class ImagePreviewCard extends StatelessWidget {
         ],
       ),
     );
-    return InkWell(
-      onTap: () => _openPreview(context),
-      child: content,
-    );
+    return InkWell(onTap: () => _openPreview(context), child: content);
   }
 }
 
@@ -383,13 +361,13 @@ class ImagePreviewTitleOverlay extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Colors.black.withValues(alpha: 0.45),
+                Colors.black.withValues(alpha: 0.8),
                 Colors.black.withValues(alpha: 0),
               ],
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 18),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Text(
               title,
               maxLines: 1,

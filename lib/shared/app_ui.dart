@@ -144,6 +144,68 @@ class AppTabLabel extends StatelessWidget {
   }
 }
 
+/// 统一的带标签下拉字段，避免各页面重复拼装 `ShadSelect`。
+class AppSelectField<T> extends StatelessWidget {
+  const AppSelectField({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.emptyPlaceholder = '暂无可选项',
+  });
+
+  // 字段说明文本。
+  final String label;
+
+  // 当前选中的值。
+  final T value;
+
+  // 候选项和值文案对。
+  final List<({T value, String label})> options;
+
+  // 选中值变化回调。
+  final ValueChanged<T> onChanged;
+
+  // 没有可选项时的占位文案。
+  final String emptyPlaceholder;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasOptions = options.isNotEmpty;
+    final labelsByValue = {for (final option in options) option.value: option.label};
+    final selectedLabel = labelsByValue[value];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(label, style: ShadTheme.of(context).textTheme.muted),
+        const SizedBox(height: AppGap.xs),
+        ShadSelect<T>(
+          enabled: hasOptions,
+          initialValue: hasOptions ? value : null,
+          minWidth: 180,
+          placeholder: Text(selectedLabel ?? (hasOptions ? label : emptyPlaceholder)),
+          options: options
+              .map(
+                (option) => ShadOption<T>(
+                  value: option.value,
+                  child: Text(option.label),
+                ),
+              )
+              .toList(),
+          selectedOptionBuilder: (_, selectedValue) {
+            return Text(labelsByValue[selectedValue] ?? '$selectedValue');
+          },
+          onChanged: (nextValue) {
+            if (nextValue != null) onChanged(nextValue);
+          },
+        ),
+      ],
+    );
+  }
+}
+
 class AppObscuredInput extends StatefulWidget {
   const AppObscuredInput({
     super.key,

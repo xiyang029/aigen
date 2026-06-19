@@ -19,6 +19,12 @@ class AppGap {
 // 任务状态徽章配色，统一供任务列表和详情状态标识使用。
 const imageRunningBadgeBackground = Color(0xFFF4F0FF);
 const imageRunningBadgeForeground = Color(0xFF7C3AED);
+const _appDialogTheme = ShadDialogTheme(
+  useSafeArea: false,
+  padding: EdgeInsets.fromLTRB(24, 24, 24, 24),
+  radius: BorderRadius.all(Radius.circular(16.0)),
+  removeBorderRadiusWhenTiny: false,
+);
 
 ShadThemeData buildAppTheme() {
   return ShadThemeData(
@@ -30,21 +36,15 @@ ShadThemeData buildAppTheme() {
       ring: imageAccent,
       destructive: imageError,
     ),
-    alertDialogTheme: const ShadDialogTheme(
-      useSafeArea: false,
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24),
-      radius: BorderRadius.all(Radius.circular(16.0)),
-      removeBorderRadiusWhenTiny: false,
-    ),
-    primaryDialogTheme: const ShadDialogTheme(
-      useSafeArea: false,
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24),
-      radius: BorderRadius.all(Radius.circular(16.0)),
-      removeBorderRadiusWhenTiny: false,
-    ),
+    alertDialogTheme: _appDialogTheme,
+    primaryDialogTheme: _appDialogTheme,
     sheetTheme: const ShadSheetTheme(
       useSafeArea: false,
       radius: BorderRadius.all(Radius.circular(16.0)),
+    ),
+    ghostButtonTheme: const ShadButtonTheme(
+      hoverBackgroundColor: Colors.transparent,
+      hoverForegroundColor: imageError,
     ),
   );
 }

@@ -37,7 +37,7 @@ class TaskStatusChip extends StatelessWidget {
       ),
     };
 
-    return ShadBadge(
+    return ShadBadge.secondary(
       backgroundColor: meta.bg,
       foregroundColor: meta.fg,
       child: Row(
