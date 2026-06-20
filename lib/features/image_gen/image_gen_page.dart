@@ -391,12 +391,9 @@ class ImageGenPageState extends State<ImageGenPage>
         ),
         const SizedBox(height: AppGap.md),
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              '进行中',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(width: 10),
+            Text('进行中', style: TextStyle(fontWeight: FontWeight.bold)),
             ShadBadge(child: Text('活跃 ${_tasks.length}')),
           ],
         ),

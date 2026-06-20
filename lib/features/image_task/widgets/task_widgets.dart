@@ -192,9 +192,9 @@ class ImageTaskGroupedCardList extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(entry.key, style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 8),
                 ShadBadge(child: Text('${entry.value.length} 条')),
               ],
             ),
